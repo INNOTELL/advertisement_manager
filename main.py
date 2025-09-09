@@ -61,11 +61,11 @@ def delete_advert(advert_id: str):
 def seed():
     items = [
         AdvertIn(title='iPhone 13', description='Clean, slightly used', price=3500, category='Electronics',
-                 image_url='https://picsum.photos/seed/iphone/800/600'),
+                 image_url='https://cdn.pixabay.com/photo/2022/10/03/20/01/iphone-13-pro-max-7496758_960_720.jpg'),
         AdvertIn(title='Office Chair', description='Ergonomic, adjustable lumbar support', price=650, category='Furniture',
-                 image_url='https://picsum.photos/seed/chair/800/600'),
+                 image_url='https://cdn.pixabay.com/photo/2018/01/26/08/15/dining-room-3108037_960_720.jpg'),
         AdvertIn(title='2-Bed Apartment', description='Adenta – newly painted, gated', price=3500, category='Real Estate',
-                 image_url='https://picsum.photos/seed/apt/800/600'),
+                 image_url='https://cf.bstatic.com/xdata/images/hotel/max1024x768/678821115.jpg?k=0a3e051bb43246c7a6b14138fcff77d5b1ab2d7b24956e0a1fdd004492e42638&o=&hp=1'),
     ]
     for s in items:
         create_advert(s)

@@ -6,11 +6,11 @@ def show_home_page():
     q = (q_params.get('q') or '').lower()
     cat = q_params.get('cat') or ''
 
-    with ui.element('div').classes('container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'):
-        with ui.row().classes('items-end justify-between gap-4 py-4'):
-            ui.label('All Adverts').classes('text-2xl font-semibold')
+    with ui.element('div').classes('container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 bg-blue-100 h-full w-full'):
+        with ui.row().classes('items-end justify-between gap-4 py-4 text-white'):
+            ui.label('All Adverts').classes('text-2xl font-semibold text-blue-700')
             with ui.row().classes('gap-3'):
-                q_input = ui.input('Search title...').classes('w-48 sm:w-64')
+                q_input = ui.input('Search title...').classes('w-48 sm:w-64 text-blue text-2xl')
                 cat_select = ui.select(['All','Electronics','Furniture','Vehicles','Real Estate','Services'], value='All').props('outlined')
                 if cat:
                     try:
@@ -43,7 +43,7 @@ def show_home_page():
 
                     if not items:
                         with ui.card().classes('mx-auto max-w-3xl my-10 p-10 text-center'):
-                            ui.label('No adverts yet').classes('text-xl font-semibold')
+                            ui.label('No adverts yet').classes('text-xl text-blue-200 font-semibold')
                             ui.label('Post your first advert').classes('opacity-70')
                             ui.link('Add Advert', '/add_event').classes('underline mt-4')
                         return
@@ -55,7 +55,7 @@ def show_home_page():
                                     ui.image(ad['image_url']).classes('w-full h-48 object-cover')
                                 with ui.element('div').classes('p-4 space-y-2'):
                                     ui.label(ad['title']).classes('font-semibold')
-                                    ui.label(f"GHS {ad['price']:,.2f}").classes('text-sm opacity-80')
+                                    ui.label(f"GHS {ad['price']:,.2f}").classes('text-md opacity-80')
                                     ui.label(ad['category']).classes('text-xs opacity-60')
                                     with ui.row().classes('pt-2 gap-3'):
                                         ui.link('View', f"/view_event?id={ad['id']}").classes('text-sm underline')
