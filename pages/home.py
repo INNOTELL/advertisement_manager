@@ -63,12 +63,12 @@ def show_home_page():
 
                                         # View button (neutral)
                                         def on_view(ad_id=ad['id']):
-                                            ui.open(f"/adverts/{ad_id}")
+                                            ui.navigate.to(f"/view_event?id={ad_id}")
                                         ui.button('View', on_click=on_view).classes(f"{base_btn} bg-gray-800 text-white hover:bg-gray-900 focus:ring-gray-400").props('title=View advert')
 
                                         # Edit button (primary)
                                         def on_edit(ad_id=ad['id']):
-                                            ui.open(f"/adverts/{ad_id}/edit")
+                                            ui.navigate.to(f"/edit_event?id={ad_id}")
                                         ui.button('Edit', on_click=on_edit).classes(f"{base_btn} bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-400").props('title=Edit advert')
 
                                         # Delete button (danger)
