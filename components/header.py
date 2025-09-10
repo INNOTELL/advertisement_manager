@@ -3,7 +3,7 @@ from nicegui import ui
 
 def show_header():
     # Header bar with subtle blur and sticky positioning
-    with ui.element('div').classes('w-full bg-white/80 backdrop-blur sticky top-0 z-50 shadow-sm'):
+    with ui.element('div').classes('w-full bg-gray-100 backdrop-blur sticky top-0 z-50 shadow-sm'):
         with ui.row().classes('container mx-auto px-4 py-3 flex items-center justify-between'):
             ui.link('Adverts', '/').classes('text-xl font-semibold no-underline text-blue-600')
             with ui.row().classes('gap-3'):
