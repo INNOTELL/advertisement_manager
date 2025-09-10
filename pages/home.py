@@ -57,31 +57,30 @@ def show_home_page():
                                     ui.label(ad['title']).classes('font-semibold')
                                     ui.label(f"GHS {ad['price']:,.2f}").classes('text-md opacity-80')
                                     ui.label(ad['category']).classes('text-xs opacity-60')
-                                    with ui.row().classes('pt-2 gap-3'):
-                                        ui.link('View', f"/view_event?id={ad['id']}").classes('text-sm underline')
-                                        ui.link('Edit', f"/edit_event?id={ad['id']}").classes('text-sm underline')
+                                    # Actions row: View, Edit, Delete as consistent buttons
+                                    with ui.row().classes('gap-3 mt-2 flex-wrap items-center'):
+                                        base_btn = 'px-3 py-1.5 rounded-md text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2'
 
+                                        # View button (neutral)
+                                        def on_view(ad_id=ad['id']):
+                                            ui.open(f"/adverts/{ad_id}")
+                                        ui.button('View', on_click=on_view).classes(f"{base_btn} bg-gray-800 text-white hover:bg-gray-900 focus:ring-gray-400").props('title=View advert')
+
+                                        # Edit button (primary)
+                                        def on_edit(ad_id=ad['id']):
+                                            ui.open(f"/adverts/{ad_id}/edit")
+                                        ui.button('Edit', on_click=on_edit).classes(f"{base_btn} bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-400").props('title=Edit advert')
+
+                                        # Delete button (danger)
                                         def on_delete(ad_id=ad['id']):
-                                            confirm_delete(ad_id)
-                                        ui.button('Delete', on_click=on_delete).classes('text-sm')
+                                            ui.run(delete_ad(ad_id))
+                                        ui.button('Delete', on_click=on_delete).classes(f"{base_btn} bg-red-600 text-white hover:bg-red-700 focus:ring-red-400").props('title=Delete advert')
 
                 ui.timer(0.05, render, once=True)
 
-            # Confirm dialog (reusable)
-            confirm = ui.dialog()
-            with confirm, ui.card().classes('p-6 space-y-4'):
-                ui.label('Delete this advert?').classes('text-lg font-semibold')
-                with ui.row().classes('justify-end gap-2'):
-                    ui.button('Cancel', on_click=confirm.close)
-                    confirm_yes = ui.button('Delete').classes('bg-red-600 text-white')
-
-            def confirm_delete(ad_id: str):
-                async def go():
-                    await ui.run_javascript(f'fetch("/api/adverts/{ad_id}", {{method:"DELETE"}})')
-                    confirm.close()
-                    ui.notify('Advert deleted')
-                    grid.refresh()
-                confirm_yes.on('click', go)
-                confirm.open()
+            async def delete_ad(ad_id: str):
+                await ui.run_javascript(f'fetch("/api/adverts/{ad_id}", {{method:"DELETE"}})')
+                ui.notify('Deleted')
+                grid.refresh()
 
         grid()
