@@ -10,8 +10,8 @@ def show_view_event_page():
     async def load():
         data = await ui.run_javascript(f'fetch("/api/adverts/{advert_id}").then(r=>r.json())')
         with ui.card().classes('max-w-2xl mx-auto overflow-hidden my-6'):
-            if data.get('image_url'):
-                ui.image(data['image_url']).classes('w-full h-64 object-cover')
+            if data.get('image'):
+                ui.image(data['image']).classes('w-full h-64 object-cover')
             with ui.element('div').classes('p-4 space-y-2'):
                 ui.label(data['title']).classes('text-2xl font-semibold')
                 ui.label(f"GHS {data['price']:,.2f}").classes('opacity-80')

@@ -1,7 +1,14 @@
 from nicegui import ui
 import asyncio
+import requests 
+from utils.api import base_url
 
 def show_home_page():
+    response = requests.get(f"{base_url}/adverts")
+    data = response.json()
+    # for advert in data["data"]:
+    #     print(advert)
+
     q_params = ui.context.client.request.query_params
     q = (q_params.get('q') or '').lower()
     cat = q_params.get('cat') or ''
@@ -30,11 +37,9 @@ def show_home_page():
             @ui.refreshable
             def grid():
                 with ui.element('div').classes('py-2'):
-                    async def load():
-                        return await ui.run_javascript('fetch("/api/adverts").then(r => r.json())')
 
                     async def render():
-                        items = await load()
+                        items = data["data"]
 
                         def matches(ad):
                             ok_q = (q in ad['title'].lower()) if q else True
@@ -53,8 +58,8 @@ def show_home_page():
                         with ui.element('div').classes('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'):
                             for ad in items:
                                 with ui.card().classes('rounded-2xl shadow hover:shadow-md transition p-0 overflow-hidden'):
-                                    if ad.get('image_url'):
-                                        ui.image(ad['image_url']).classes('w-full h-48 object-cover')
+                                    if ad.get('image'):
+                                        ui.image(ad['image']).classes('w-full h-48 object-cover')
                                     with ui.element('div').classes('p-4 space-y-2'):
                                         ui.label(ad['title']).classes('font-semibold')
                                         ui.label(f"GHS {ad['price']:,.2f}").classes('text-md opacity-80')

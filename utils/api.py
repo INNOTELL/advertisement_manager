@@ -1,1 +1,1 @@
-base_url = "https://advertisement-management-api-c2jb.onrender.com/"
+base_url = "https://advertisement-management-api-c2jb.onrender.com"
