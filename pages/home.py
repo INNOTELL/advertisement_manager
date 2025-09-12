@@ -16,29 +16,31 @@ def show_home_page():
     cat = q_params.get('cat') or ''
 
     # Full screen background wrapper (surface)
-    with ui.element('div').classes('w-screen inset-0 blue-100 flex items-center justify-center'):
+    with ui.element("div").classes("container mx-auto w-full px-4 sm:px-6 ig:px-8 bg-[url('https://img.freepik.com/free-photo/black-friday-sales-sign-neon-light_23-2151833076.jpg?semt=ais_hybrid&w=740&q=80')] bg-cover bg-center h-screen w-full text-center flex justify-center items-center").style('font-family: "Libre_Baskerville" , Serif;'):
         with ui.element('div').classes('container mx-auto max-w-7xl h-full w-full'):
             # Hero section (alternating palette via .section)
-            with ui.element('div').classes('section min-h-screen rounded-2xl p-6 mb-6'):
+            with ui.element('div').classes('section min-h-screen rounded-xl p-6 mb-6'):
                 with ui.element('div').classes('grid md:grid-cols-2 gap-6 items-center'):
                     with ui.element('div').classes('space-y-3'):
-                        ui.label('Find, Post, and Manage Adverts').classes('text-3xl md:text-4xl font-bold')
-                        ui.label('Discover great deals or post your own — electronics, furniture, vehicles, real estate, and more.')
-                        with ui.row().classes('gap-3'):
-                            ui.link('Browse Adverts', '/#adverts_list').classes('btn-secondary no-underline')
+                        ui.label('Welcome to Comfy_Hub!').classes('text-2xl md:text-4xl text-blue-100 font-bold')
+                        ui.label('Find, Post, Sell.').classes('text-blue-100 text-4xl font-bold')
+                        
+                        ui.label('At Comfy_hub, we make advertising simple, smart, and seamless.').classes('text-blue-100 text-4xl font-bold')
+                        # with ui.row().classes('gap-3'):
+                        #     ui.link('Browse Adverts', '/#adverts_list').classes('btn-secondary no-underline')
 
-                            def go_add():
-                                ui.navigate.to('/add_event')
-                            ui.button('Post an Advert', on_click=go_add).classes('btn-primary')
+                            # def go_add():
+                            #     ui.navigate.to('/add_event')
+                            # ui.button('Post an Advert', on_click=go_add).classes('btn-primary')
 
-                    ui.image('https://images.unsplash.com/photo-1512436991641-6745cdb1723f?q=80&w=1600&auto=format&fit=crop').classes('w-full h-64 md:h-80 object-cover rounded-xl shadow-lg')
+                    # ui.image('https://images.unsplash.com/photo-1512436991641-6745cdb1723f?q=80&w=1600&auto=format&fit=crop').classes('w-full h-64 md:h-80 object-cover rounded-xl shadow-lg')
 
             # Filters section
-            with ui.element('div').classes('section rounded-2xl p-4 mb-4'):
+            with ui.element('div').classes('section rounded-2xl p-4 mb-4 bg-blue-200'):
                 with ui.row().classes('items-end justify-between gap-4'):
-                    ui.label('All Adverts').classes('text-2xl font-semibold')
+                    ui.label('All Adverts').classes('text-2xl font-semibold text-blue-600')
                     with ui.row().classes('gap-3'):
-                        q_input = ui.input('Search title...').classes('input w-48 sm:w-64')
+                        q_input = ui.input('Search title...').classes('input w-48 sm:w-64 text-blue-100')
                         cat_select = ui.select(['All', 'Electronics', 'Furniture', 'Vehicles', 'Real Estate', 'Services'], value='All').classes('input').props('outlined')
                         if cat:
                             try:
@@ -56,7 +58,7 @@ def show_home_page():
 
             @ui.refreshable
             def grid():
-                with ui.element('div').classes('section rounded-2xl p-4').props('id=adverts_list'):
+                with ui.element('div').classes('section rounded-2xl p-4 bg-blue-300').props('id=adverts_list'):
 
                     async def render():
                         try:
@@ -91,7 +93,7 @@ def show_home_page():
                                 card = ui.card().classes('card hover:shadow-md transition p-0 overflow-hidden')
                                 with card:
                                     if ad.get('image'):
-                                        ui.image(ad['image']).classes('w-full h-48 object-cover')
+                                        ui.image(ad['image']).classes('w-full h-50 object-cover')
                                     with ui.element('div').classes('p-4 space-y-2'):
                                         ui.label(ad['title']).classes('font-semibold')
                                         ui.label(f"GHS {ad['price']:,.2f}").classes('text-md opacity-80')
