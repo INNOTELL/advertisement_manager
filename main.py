@@ -1,11 +1,13 @@
 from nicegui import ui, app
+from theme import setup_theme
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, List
 import uuid
 
-# Inject Tailwind CDN once
+# Inject Tailwind CDN once for layout utilities
 ui.add_head_html('<script src="https://cdn.tailwindcss.com"></script>')
+setup_theme()
 
 # ===== Models =====
 class AdvertIn(BaseModel):
