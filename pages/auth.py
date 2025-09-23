@@ -64,19 +64,24 @@ def show_login_page(login_user=None, auth_state=None):
                         
                         if login_user:
                             ui.notify('Logging in...', type='info')
-                            # Simple synchronous approach
+                            # Use asyncio.create_task for proper async handling
                             try:
                                 import asyncio
-                                loop = asyncio.get_event_loop()
-                                success = loop.run_until_complete(login_user(email, password))
-                                if success:
-                                    ui.notify('Login successful! Welcome back!', type='positive')
-                                    # Small delay to ensure state is set
-                                    import time
-                                    time.sleep(0.1)
-                                    ui.navigate.to('/')
-                                else:
-                                    ui.notify('Login failed. Please check your credentials.', type='negative')
+                                
+                                async def handle_login_async():
+                                    success = await login_user(email, password)
+                                    if success:
+                                        ui.notify('Login successful! Welcome back!', type='positive')
+                                        # Small delay to ensure state is set
+                                        import time
+                                        time.sleep(0.1)
+                                        ui.navigate.to('/dashboard')
+                                    else:
+                                        ui.notify('Login failed. Please check your credentials.', type='negative')
+                                
+                                # Create task instead of using run_until_complete
+                                asyncio.create_task(handle_login_async())
+                                
                             except Exception as e:
                                 ui.notify(f'Login error: {str(e)}', type='negative')
                         else:
@@ -180,16 +185,21 @@ def show_signup_page(signup_user=None):
                         
                         if signup_user:
                             ui.notify('Creating your account...', type='info')
-                            # Simple synchronous approach
+                            # Use asyncio.create_task for proper async handling
                             try:
                                 import asyncio
-                                loop = asyncio.get_event_loop()
-                                success = loop.run_until_complete(signup_user(email, username, password))
-                                if success:
-                                    ui.notify('Account created successfully! Welcome to InnoHub!', type='positive')
-                                    ui.navigate.to('/login')
-                                else:
-                                    ui.notify('Signup failed. Email might already exist. Please try again.', type='negative')
+                                
+                                async def handle_signup_async():
+                                    success = await signup_user(email, username, password)
+                                    if success:
+                                        ui.notify('Account created successfully! Welcome to InnoHub!', type='positive')
+                                        ui.navigate.to('/login')
+                                    else:
+                                        ui.notify('Signup failed. Email might already exist. Please try again.', type='negative')
+                                
+                                # Create task instead of using run_until_complete
+                                asyncio.create_task(handle_signup_async())
+                                
                             except Exception as e:
                                 ui.notify(f'Signup error: {str(e)}', type='negative')
                         else:
