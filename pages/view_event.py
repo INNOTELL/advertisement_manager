@@ -3,6 +3,10 @@ import requests
 import asyncio
 from urllib.parse import quote
 from utils.api import base_url
+from components.footer import show_footer
+
+
+@ui.page('/view_event')
 
 def show_view_event_page():
     q = ui.context.client.request.query_params
@@ -134,7 +138,7 @@ def show_view_event_page():
                         # Action Buttons
                         with ui.element('div').classes('space-y-4 pt-6'):
                             with ui.row().classes('gap-4'):
-                                ui.button('Add to Cart', icon='shopping_cart').classes('flex-1 bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-lg font-semibold text-lg')
+                                ui.button('Add to Cart', icon='shopping_cart').classes('flex-1 bg-blue-300 hover:bg-blue-600 text-white py-4 rounded-lg font-semibold text-lg')
                                 ui.button('Buy Now', icon='flash_on').classes('flex-1 bg-red-500 hover:bg-red-600 text-white py-4 rounded-lg font-semibold text-lg')
                             
                             with ui.row().classes('gap-4'):
@@ -194,7 +198,7 @@ def show_view_event_page():
                                         ui.label(value).classes('text-gray-800 font-medium')
                             
                             with ui.element('div'):
-                                ui.label('Shipping Information').classes('text-lg font-semibold text-gray-800 mb-3')
+                                ui.label('Shipping Information').classes('text-lg font-poppins font-semibold text-gray-800 mb-3')
                                 shipping_info = [
                                     ('Delivery Time', '2-5 Business Days'),
                                     ('Shipping Cost', 'Free over GHS 200'),
@@ -217,5 +221,6 @@ def show_view_event_page():
                                     ui.icon('image').classes('text-4xl text-gray-400')
                                 ui.label(f'Related Product {i+1}').classes('font-medium text-gray-800 mb-1')
                                 ui.label(f'GHS {(i+1)*50:,.2f}').classes('text-orange-500 font-bold')
+        show_footer()
 
     ui.timer(0.05, load, once=True)

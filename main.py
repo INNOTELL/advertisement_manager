@@ -204,11 +204,11 @@ def edit_page():
     show_edit_event_page()
     show_footer()
 
-@ui.page('/view_event')
-def view_page():
-    show_header(auth_state, logout_user)
-    show_view_event_page()
-    show_footer()
+# @ui.page('/view_event')
+# def view_page():
+#     show_header(auth_state, logout_user)
+#     show_view_event_page()
+#     show_footer()
 
 @ui.page('/account')
 def account_page():

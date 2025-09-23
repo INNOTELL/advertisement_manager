@@ -19,14 +19,14 @@ def show_home_page():
     with ui.element("div").classes("min-h-screen bg-white overflow-x-hidden w-full max-w-full pb-20 md:pb-0"):
         
         # Welcome Banner at the top
-        with ui.element('div').classes('w-full bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 text-white py-6 sm:py-8 mb-6 overflow-hidden'):
+        with ui.element('div').classes('w-full bg-gradient-to-r from-blue-300 via-blue-500 to-blue-700 text-white py-6 sm:py-8 mb-6 overflow-hidden'):
             with ui.element('div').classes('container mx-auto px-4 text-center max-w-full'):
                 with ui.element('div').classes('flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4 flex-wrap'):
                     ui.label('INNO').classes('text-2xl sm:text-4xl font-bold text-white')
-                    ui.icon('star').classes('text-yellow-300 text-xl sm:text-3xl')
+                    ui.icon('star').classes('text-orange-300 text-xl sm:text-3xl')
                     ui.label('HUB').classes('text-2xl sm:text-4xl font-bold text-white')
                 ui.label('Ghana').classes('text-sm sm:text-lg text-orange-100 mb-2')
-                ui.label('🛒 Buy and Sell all your products from the comfort of your home').classes('text-sm sm:text-xl font-semibold text-white mb-3 sm:mb-4 break-words px-2')
+                ui.label('Buy and Sell all your products from the comfort of your home').classes('text-sm sm:text-xl font-semibold text-white mb-3 sm:mb-4 break-words px-2')
                 ui.label('Welcome to InnoHub - Your Ultimate Marketplace!').classes('text-sm sm:text-lg text-orange-100 break-words px-2')
         # Main Content Area - Jumia Style Hero Section
         with ui.element('div').classes('container mx-auto px-4 py-8 max-w-8xl mb-8'):
