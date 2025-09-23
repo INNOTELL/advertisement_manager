@@ -7,6 +7,8 @@ import uuid
 import requests
 from utils.api import base_url
 
+app.add_static_files("/assets", "assets")
+
 # Inject Tailwind CDN once for layout utilities
 ui.add_head_html('<script src="https://cdn.tailwindcss.com"></script>')
 ui.add_head_html('''

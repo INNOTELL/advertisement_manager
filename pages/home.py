@@ -19,7 +19,7 @@ def show_home_page():
     with ui.element("div").classes("min-h-screen bg-white overflow-x-hidden w-full max-w-full pb-20 md:pb-0"):
         
         # Welcome Banner at the top
-        with ui.element('div').classes('w-full bg-gradient-to-r from-blue-300 via-blue-500 to-blue-700 text-white py-6 sm:py-8 mb-6 overflow-hidden'):
+        with ui.element('div').style("background-image:url(assets/img.jpg)").classes('w-full h-[80%] bg-gradient-to-r from-blue-300 via-blue-500 to-blue-700 text-white py-6 sm:py-8 mb-6 overflow-hidden'):
             with ui.element('div').classes('container mx-auto px-4 text-center max-w-full'):
                 with ui.element('div').classes('flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4 flex-wrap'):
                     ui.label('INNO').classes('text-2xl sm:text-4xl font-bold text-white')
@@ -261,7 +261,7 @@ def show_home_page():
                                         ui.label(service['subtitle']).classes('text-xs text-gray-600 leading-tight')
                         
                         # Secondary Banner - Fixed height to fill remaining space
-                        with ui.card().classes('p-4 bg-teal-600 text-white shadow-sm flex-1 flex items-center justify-center min-h-0'):
+                        with ui.card().classes('p-4 bg-blue-600 text-white shadow-sm flex-1 flex items-center justify-center min-h-0'):
                             with ui.element('div').classes('text-center'):
                                 ui.icon('home').classes('text-white text-2xl mb-2')
                                 ui.label('HOME MAKEOVER').classes('text-sm font-bold mb-1')
