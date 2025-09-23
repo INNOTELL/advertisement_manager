@@ -1,10 +1,10 @@
 from nicegui import ui
 
 PALETTE = {
-    "PRIMARY": "#081107",
-    "ACCENT":  "#2CDD0D",
-    "MUTED":   "#F1FAC0",
-    "SURFACE": "#FFFFFF",
+    "PRIMARY": "#FF6B35",  # Jumia Orange
+    "ACCENT":  "#FF6B35",  # Jumia Orange
+    "MUTED":   "#F8F9FA",  # Light Gray
+    "SURFACE": "#FFFFFF",  # White
 }
 
 

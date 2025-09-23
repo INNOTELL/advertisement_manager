@@ -1,2 +1,5 @@
 nicegui
 requests
+fastapi
+pydantic
+python-multipart

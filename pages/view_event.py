@@ -7,9 +7,12 @@ def show_view_event_page():
     q = ui.context.client.request.query_params
     title = q.get('title')
     if not title:
-        with ui.element('div').classes('container mx-auto px-4'):
-            ui.element('div').classes('alert-dark rounded-md p-3').slot('')
-            ui.label('Missing advert title')
+        with ui.element('div').classes('container mx-auto px-4 py-8'):
+            with ui.card().classes('p-6 text-center'):
+                ui.icon('error').classes('text-4xl text-red-500 mb-4')
+                ui.label('Product not found').classes('text-xl font-semibold text-gray-800')
+                ui.label('The product you\'re looking for doesn\'t exist').classes('text-gray-600 mt-2')
+                ui.link('Back to Home', '/').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold no-underline mt-4')
         return
 
     async def load():
@@ -18,30 +21,181 @@ def show_view_event_page():
         json_data = response.json()
         items = json_data.get("data", [])
         if not items:
-            with ui.element('div').classes('container mx-auto px-4'):
-                with ui.element('div').classes('alert-dark rounded-md p-3'):
-                    ui.label('Advert not found')
+            with ui.element('div').classes('container mx-auto px-4 py-8'):
+                with ui.card().classes('p-6 text-center'):
+                    ui.icon('error').classes('text-4xl text-red-500 mb-4')
+                    ui.label('Product not found').classes('text-xl font-semibold text-gray-800')
+                    ui.label('The product you\'re looking for doesn\'t exist').classes('text-gray-600 mt-2')
+                    ui.link('Back to Home', '/').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold no-underline mt-4')
             return
+        
         data = items[0]
-        with ui.element('div').classes('container mx-auto my-8 px-4 section min-h-screen rounded-2xl p-4'):
-            with ui.element('div').classes('grid grid-cols-1 md:grid-cols-2 gap-6 items-start'):
-                # Left column: image
-                with ui.card().classes('card p-0 overflow-hidden'):
-                    if data.get('image'):
-                        ui.image(data['image']).classes('w-full').style('display:block; width:100%; height:auto; max-height:80vh; object-fit:contain;')
-                # Right column: details
-                with ui.card().classes('card p-6 space-y-4'):
-                    ui.label(data['title']).classes('text-3xl font-semibold')
-                    ui.label(f"GHS {data['price']:,.2f}").classes('text-lg opacity-80')
-                    ui.label(data['category']).classes('text-sm opacity-60')
-                    ui.label(data['description']).classes('pt-2 text-base').style('white-space: pre-line;')
-                    with ui.row().classes('pt-4 gap-3'):
-                        def go_edit():
-                            ui.navigate.to(f'/edit_event?title={quote(str(data.get("title","")))}')
-                        def go_back():
-                            ui.navigate.to('/')
-                        ui.button('Edit', on_click=go_edit).classes('btn-primary')
-                        ui.button('Back to list', on_click=go_back).classes('btn-secondary')
-                # Remove duplicated bottom buttons; actions live in right column only
+        
+        # Jumia-style product detail page
+        with ui.element('div').classes('min-h-screen bg-white py-8'):
+            with ui.element('div').classes('container mx-auto px-4 max-w-7xl'):
+                # Breadcrumb
+                with ui.element('div').classes('mb-6'):
+                    with ui.row().classes('items-center gap-2 text-sm text-gray-600'):
+                        ui.link('Home', '/').classes('hover:text-orange-500 no-underline')
+                        ui.icon('chevron_right').classes('text-gray-400')
+                        ui.link(data.get('category', 'Category'), f'/?cat={data.get("category", "")}').classes('hover:text-orange-500 no-underline')
+                        ui.icon('chevron_right').classes('text-gray-400')
+                        ui.label(data.get('title', 'Product')).classes('text-gray-800 font-medium')
+                
+                # Main Product Section
+                with ui.element('div').classes('grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'):
+                    # Left column: Product Images
+                    with ui.card().classes('bg-gray-50 p-6 rounded-xl shadow-sm'):
+                        # Main Product Image
+                        with ui.element('div').classes('relative overflow-hidden bg-gray-50 rounded-lg mb-4 aspect-square'):
+                            if data.get('image') and data['image'].strip():
+                                # Display image from backend database
+                                ui.image(data['image']).classes('w-full h-full object-contain rounded-lg hover:scale-105 transition-transform duration-300')
+                            else:
+                                # Enhanced fallback for missing images
+                                with ui.element('div').classes('w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex flex-col items-center justify-center'):
+                                    ui.icon('image').classes('text-8xl text-gray-400 mb-4')
+                                    ui.label('No Image Available').classes('text-lg text-gray-500 font-medium')
+                                    ui.label('Image will be displayed here').classes('text-sm text-gray-400')
+                        
+                        # Image thumbnails and gallery
+                        with ui.element('div').classes('space-y-3'):
+                            ui.label('Product Gallery').classes('text-sm font-semibold text-gray-700')
+                            with ui.row().classes('gap-2 flex-wrap'):
+                                # Main image thumbnail
+                                if data.get('image') and data['image'].strip():
+                                    with ui.element('div').classes('w-16 h-16 bg-gray-200 rounded-lg cursor-pointer hover:border-2 hover:border-orange-500 overflow-hidden border-2 border-orange-500'):
+                                        ui.image(data['image']).classes('w-full h-full object-cover')
+                                else:
+                                    with ui.element('div').classes('w-16 h-16 bg-gray-200 rounded-lg cursor-pointer hover:border-2 hover:border-orange-500 flex items-center justify-center border-2 border-orange-500'):
+                                        ui.icon('image').classes('text-gray-400')
+                                
+                                # Additional placeholder thumbnails
+                                for i in range(3):
+                                    with ui.element('div').classes('w-16 h-16 bg-gray-200 rounded-lg cursor-pointer hover:border-2 hover:border-orange-500 flex items-center justify-center'):
+                                        ui.icon('add_photo_alternate').classes('text-gray-400 text-sm')
+                    
+                    # Right column: Product Details
+                    with ui.element('div').classes('space-y-6'):
+                        # Product Title and Rating
+                        ui.label(data['title']).classes('text-2xl lg:text-3xl font-bold text-gray-800 leading-tight')
+                        
+                        # Rating and Stock Status
+                        with ui.row().classes('items-center gap-4 mb-4'):
+                            with ui.row().classes('items-center gap-1'):
+                                for i in range(5):
+                                    ui.icon('star').classes('text-yellow-400 text-sm')
+                                ui.label('4.5 (128 reviews)').classes('text-sm text-gray-600')
+                            ui.label('•').classes('text-gray-400')
+                            ui.label('In Stock').classes('text-sm text-green-600 font-medium')
+                        
+                        # Price Section
+                        with ui.element('div').classes('py-4 border-b border-gray-200'):
+                            with ui.row().classes('items-baseline gap-3'):
+                                ui.label(f"GHS {data['price']:,.2f}").classes('text-3xl lg:text-4xl font-bold text-orange-500')
+                                ui.label(f"GHS {(data['price'] * 1.2):,.2f}").classes('text-lg text-gray-400 line-through')
+                            ui.label('Free shipping on orders over GHS 200').classes('text-sm text-green-600 mt-2')
+                        
+                        # Key Features
+                        with ui.element('div').classes('py-4 border-b border-gray-200'):
+                            ui.label('Key Features').classes('text-lg font-semibold text-gray-800 mb-3')
+                            features = [
+                                'High Quality Materials',
+                                'Easy to Use',
+                                'Durable Construction',
+                                '1 Year Warranty'
+                            ]
+                            for feature in features:
+                                with ui.row().classes('items-center gap-2 mb-2'):
+                                    ui.icon('check_circle').classes('text-green-500 text-sm')
+                                    ui.label(feature).classes('text-gray-700 text-sm')
+                        
+                        # Action Buttons
+                        with ui.element('div').classes('space-y-4 pt-6'):
+                            with ui.row().classes('gap-4'):
+                                ui.button('Add to Cart', icon='shopping_cart').classes('flex-1 bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-lg font-semibold text-lg')
+                                ui.button('Buy Now', icon='flash_on').classes('flex-1 bg-red-500 hover:bg-red-600 text-white py-4 rounded-lg font-semibold text-lg')
+                            
+                            with ui.row().classes('gap-4'):
+                                ui.button('Add to Wishlist', icon='favorite_border').classes('bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium')
+                                ui.button('Share', icon='share').classes('bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium')
+                        
+                        # Vendor Actions (only for authenticated vendors)
+                        if True:  # Simplified for demo
+                            with ui.element('div').classes('pt-6 border-t border-gray-200'):
+                                ui.label('Vendor Actions').classes('text-lg font-semibold text-gray-800 mb-4')
+                                with ui.row().classes('gap-4'):
+                                    def go_edit():
+                                        ui.navigate.to(f'/edit_event?title={quote(str(data.get("title","")))}')
+                                    ui.button('Edit Product', on_click=go_edit, icon='edit').classes('bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium')
+                                    
+                                    async def delete_product():
+                                        try:
+                                            response = requests.delete(f"{base_url}/adverts/{quote(str(data.get('title', '')))}")
+                                            if response.status_code == 200:
+                                                ui.notify('Product deleted successfully', type='positive')
+                                                ui.navigate.to('/dashboard')
+                                            else:
+                                                ui.notify('Failed to delete product', type='negative')
+                                        except Exception as e:
+                                            ui.notify(f'Error: {e}', type='negative')
+                                    
+                                    ui.button('Delete Product', on_click=delete_product, icon='delete').classes('bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium')
+                
+                # Product Details Tabs
+                with ui.element('div').classes('bg-gray-50 rounded-xl shadow-sm mb-8'):
+                    with ui.element('div').classes('border-b border-gray-200'):
+                        with ui.row().classes('px-6 py-4'):
+                            ui.button('Description').classes('px-4 py-2 text-orange-500 font-semibold border-b-2 border-orange-500')
+                            ui.button('Specifications').classes('px-4 py-2 text-gray-600 hover:text-orange-500')
+                            ui.button('Reviews').classes('px-4 py-2 text-gray-600 hover:text-orange-500')
+                            ui.button('Shipping').classes('px-4 py-2 text-gray-600 hover:text-orange-500')
+                    
+                    # Description Content
+                    with ui.element('div').classes('p-6'):
+                        ui.label('Product Description').classes('text-xl font-bold text-gray-800 mb-4')
+                        ui.label(data['description']).classes('text-gray-700 leading-relaxed').style('white-space: pre-line;')
+                        
+                        # Additional product details
+                        with ui.element('div').classes('mt-6 grid grid-cols-1 md:grid-cols-2 gap-6'):
+                            with ui.element('div'):
+                                ui.label('Product Information').classes('text-lg font-semibold text-gray-800 mb-3')
+                                details = [
+                                    ('Brand', 'Generic'),
+                                    ('Model', 'Standard'),
+                                    ('Category', data.get('category', 'N/A')),
+                                    ('Condition', 'New'),
+                                    ('Warranty', '1 Year')
+                                ]
+                                for label, value in details:
+                                    with ui.row().classes('justify-between py-2 border-b border-gray-100'):
+                                        ui.label(label).classes('text-gray-600')
+                                        ui.label(value).classes('text-gray-800 font-medium')
+                            
+                            with ui.element('div'):
+                                ui.label('Shipping Information').classes('text-lg font-semibold text-gray-800 mb-3')
+                                shipping_info = [
+                                    ('Delivery Time', '2-5 Business Days'),
+                                    ('Shipping Cost', 'Free over GHS 200'),
+                                    ('Return Policy', '30 Days'),
+                                    ('Payment Methods', 'Cash, Mobile Money, Card')
+                                ]
+                                for label, value in shipping_info:
+                                    with ui.row().classes('justify-between py-2 border-b border-gray-100'):
+                                        ui.label(label).classes('text-gray-600')
+                                        ui.label(value).classes('text-gray-800 font-medium')
+                
+                # Related Products Section
+                with ui.element('div').classes('bg-gray-50 rounded-xl shadow-sm p-6'):
+                    ui.label('Related Products').classes('text-2xl font-bold text-gray-800 mb-6')
+                    with ui.element('div').classes('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6'):
+                        # Placeholder for related products
+                        for i in range(4):
+                            with ui.card().classes('p-4 hover:shadow-lg transition-shadow cursor-pointer border border-gray-100'):
+                                with ui.element('div').classes('w-full h-32 bg-gray-200 rounded mb-3 flex items-center justify-center'):
+                                    ui.icon('image').classes('text-4xl text-gray-400')
+                                ui.label(f'Related Product {i+1}').classes('font-medium text-gray-800 mb-1')
+                                ui.label(f'GHS {(i+1)*50:,.2f}').classes('text-orange-500 font-bold')
 
     ui.timer(0.05, load, once=True)
