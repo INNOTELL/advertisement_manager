@@ -152,6 +152,7 @@ from pages.auth import show_login_page, show_signup_page
 from pages.dashboard import show_dashboard_page
 from pages.account import show_account_page
 from pages.orders import show_orders_page
+from pages.analytics import show_analytics_page
 from pages.wishlist import show_wishlist_page
 from pages.cart import show_cart_page
 from pages.delivery import show_delivery_page
@@ -187,7 +188,7 @@ def dashboard_page():
 
 @ui.page('/add_event')
 def add_page():
-    if not auth_state.is_authenticated or auth_state.user_type != 'vendor':
+    if not auth_state.is_authenticated:
         ui.navigate.to('/login')
         return
     show_header(auth_state, logout_user)
@@ -196,7 +197,7 @@ def add_page():
 
 @ui.page('/edit_event')
 def edit_page():
-    if not auth_state.is_authenticated or auth_state.user_type != 'vendor':
+    if not auth_state.is_authenticated:
         ui.navigate.to('/login')
         return
     show_header(auth_state, logout_user)
@@ -225,6 +226,15 @@ def orders_page():
         return
     show_header(auth_state, logout_user)
     show_orders_page(auth_state)
+    show_footer()
+
+@ui.page('/analytics')
+def analytics_page():
+    if not auth_state.is_authenticated:
+        ui.navigate.to('/login')
+        return
+    show_header(auth_state, logout_user)
+    show_analytics_page(auth_state)
     show_footer()
 
 @ui.page('/wishlist')

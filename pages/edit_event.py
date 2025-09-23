@@ -1,5 +1,6 @@
 ﻿from nicegui import ui
 import requests
+import asyncio
 from urllib.parse import quote
 from utils.api import base_url
 
@@ -7,7 +8,9 @@ from utils.api import base_url
 def show_edit_event_page():
     q = ui.context.client.request.query_params
     original_title = q.get('title')
-    if not original_title:
+    advert_id = q.get('id')  # Also check for ID parameter
+    
+    if not original_title and not advert_id:
         with ui.element('div').classes('container mx-auto px-4 py-8'):
             with ui.card().classes('p-6 text-center'):
                 ui.icon('error').classes('text-4xl text-red-500 mb-4')
@@ -51,11 +54,25 @@ def show_edit_event_page():
                         ui.label('Product Images').classes('text-xl font-semibold text-gray-800 mb-4')
                         
                         image_content = None
+                        
+                        # Image Preview Area
+                        image_preview = ui.element('div').classes('mb-4')
 
                         def handle_image_upload(e):
                             nonlocal image_content
                             image_content = e.content.read()
                             ui.notify('New image uploaded successfully!', type='positive')
+                            
+                            # Show preview of new image
+                            if image_content:
+                                import base64
+                                image_base64 = base64.b64encode(image_content).decode('utf-8')
+                                image_preview.clear()
+                                with image_preview:
+                                    with ui.card().classes('p-4 bg-white border border-gray-200 rounded-lg'):
+                                        ui.label('New Image Preview').classes('text-sm font-semibold text-gray-700 mb-2')
+                                        ui.image(f'data:image/jpeg;base64,{image_base64}').classes('w-full h-48 object-cover rounded-lg')
+                                        ui.label('This will replace the current image').classes('text-xs text-green-600 mt-2')
                         
                         # Image Upload Area
                         with ui.element('div').classes('border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-orange-500 transition-colors'):
@@ -92,18 +109,41 @@ def show_edit_event_page():
 
                 async def load():
                     try:
-                        encoded = quote(str(original_title))
-                        resp = requests.get(f"{base_url}/advert_details/{encoded}")
-                        js = resp.json()
-                        items = js.get('data', [])
-                        if not items:
+                        # Get all adverts and find the specific one
+                        response = await asyncio.to_thread(requests.get, f"{base_url}/adverts")
+                        json_data = response.json()
+                        all_adverts = json_data.get("data", [])
+                        
+                        # Find the specific advert
+                        target_advert = None
+                        if advert_id:
+                            target_advert = next((ad for ad in all_adverts if ad.get('id') == advert_id), None)
+                        elif original_title:
+                            target_advert = next((ad for ad in all_adverts if ad.get('title') == original_title), None)
+                        
+                        if not target_advert:
                             ui.notify('Product not found', type='negative')
                             return
-                        data = items[0]
-                        title.value = data['title']
-                        description.value = data['description']
-                        price.value = data['price']
-                        category_select.value = data['category']
+                        
+                        # Populate the form with existing data
+                        title.value = target_advert.get('title', '')
+                        description.value = target_advert.get('description', '')
+                        price.value = target_advert.get('price', 0)
+                        category_select.value = target_advert.get('category', '')
+                        
+                        # Show current image if available
+                        current_image = target_advert.get('image', '')
+                        if current_image:
+                            image_preview.clear()
+                            with image_preview:
+                                with ui.card().classes('p-4 bg-white border border-gray-200 rounded-lg'):
+                                    ui.label('Current Image').classes('text-sm font-semibold text-gray-700 mb-2')
+                                    if current_image.startswith('http'):
+                                        ui.image(current_image).classes('w-full h-48 object-cover rounded-lg')
+                                    else:
+                                        ui.label('Image available but format not supported for preview').classes('text-xs text-gray-500')
+                                    ui.label('Upload a new image below to replace this one').classes('text-xs text-blue-600 mt-2')
+                        
                     except Exception as e:
                         ui.notify(f'Error loading product: {e}', type='negative')
 
@@ -123,26 +163,40 @@ def show_edit_event_page():
                 async def save():
                     if not validate():
                         return
-                    if image_content is None:
-                        ui.notify('Please upload a new image', type='negative')
-                        return
-                    encoded = quote(str(original_title))
+                    
+                    # Prepare form data
                     data_form = {
                         'new_title': title.value,
                         'description': description.value,
                         'price': float(price.value),
                         'category': category_select.value,
                     }
-                    files = {
-                        'image': ('image', image_content, 'application/octet-stream'),
-                    }
+                    
+                    # Handle image upload (optional)
+                    files = None
+                    if image_content:
+                        files = {
+                            'image': ('image', image_content, 'application/octet-stream'),
+                        }
+                    
                     try:
-                        r = requests.put(f"{base_url}/edit_advert/{encoded}", data=data_form, files=files)
+                        # Use the original title or ID for the API call
+                        identifier = original_title or advert_id
+                        encoded = quote(str(identifier))
+                        
+                        if files:
+                            # Update with new image
+                            r = await asyncio.to_thread(requests.put, f"{base_url}/edit_advert/{encoded}", data=data_form, files=files)
+                        else:
+                            # Update without changing image
+                            r = await asyncio.to_thread(requests.put, f"{base_url}/edit_advert/{encoded}", data=data_form)
+                        
                         if r.status_code >= 400:
                             ui.notify(f'Update failed: {r.text}', type='negative')
                             return
+                        
                         ui.notify('Product updated successfully!', type='positive')
-                        ui.navigate.to(f'/view_event?title={quote(str(title.value))}')
+                        ui.navigate.to(f'/view_event?title={quote(str(title.value))}&id={advert_id or ""}')
                     except Exception as e:
                         ui.notify(f'Error: {e}', type='negative')
 

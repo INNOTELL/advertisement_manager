@@ -42,7 +42,7 @@ def show_dashboard_page(auth_state=None):
                     with ui.card().classes('p-6 bg-gray-50 shadow-sm'):
                         with ui.element('div').classes('flex items-center justify-between mb-6'):
                             ui.label('Recent Products').classes('text-xl font-bold text-gray-800')
-                            ui.button('View All', on_click=lambda: ui.navigate.to('/products')).classes('text-primary hover:text-primary-dark font-medium')
+                            ui.button('VIEW ALL', on_click=lambda: ui.navigate.to('/')).classes('bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-medium')
                         
                         # Demo products data
                         products = [
@@ -53,7 +53,12 @@ def show_dashboard_page(auth_state=None):
                         
                         with ui.element('div').classes('space-y-4'):
                             for product in products:
-                                with ui.element('div').classes('flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50'):
+                                def make_product_click_handler(p):
+                                    def view_product():
+                                        ui.navigate.to(f"/view_event?title={p['title']}&id=demo_{p['title'].lower().replace(' ', '_')}")
+                                    return view_product
+                                
+                                with ui.element('div').classes('flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer').on('click', make_product_click_handler(product)):
                                     ui.image(product['image']).classes('w-16 h-16 object-cover rounded-lg')
                                     with ui.element('div').classes('flex-1'):
                                         ui.label(product['title']).classes('font-semibold text-gray-800')
@@ -65,14 +70,14 @@ def show_dashboard_page(auth_state=None):
                                         status_colors = {'Active': 'bg-green-100 text-green-800', 'Sold': 'bg-blue-100 text-blue-800', 'Draft': 'bg-gray-100 text-gray-800'}
                                         ui.label(product['status']).classes(f'px-2 py-1 rounded-full text-xs font-medium {status_colors.get(product["status"], "bg-gray-100 text-gray-800")}')
                                         with ui.row().classes('gap-1 mt-2'):
-                                            ui.button(icon='edit').classes('text-blue-500 hover:text-blue-600 p-1').props('flat round')
-                                            ui.button(icon='delete').classes('text-red-500 hover:text-red-600 p-1').props('flat round')
+                                            ui.button(icon='edit', on_click=lambda e, p=product: (e.stop_propagation(), ui.navigate.to(f"/edit_event?title={p['title']}&id=demo_{p['title'].lower().replace(' ', '_')}"))).classes('text-blue-500 hover:text-blue-600 p-1').props('flat round').tooltip('Edit Product')
+                                            ui.button(icon='delete', on_click=lambda e, p=product: (e.stop_propagation(), delete_demo_product(p['title']))).classes('text-red-500 hover:text-red-600 p-1').props('flat round').tooltip('Delete Product')
                     
                     # Recent Orders
                     with ui.card().classes('p-6 bg-gray-50 shadow-sm'):
                         with ui.element('div').classes('flex items-center justify-between mb-6'):
                             ui.label('Recent Orders').classes('text-xl font-bold text-gray-800')
-                            ui.button('View All', on_click=lambda: ui.navigate.to('/orders')).classes('text-primary hover:text-primary-dark font-medium')
+                            ui.button('View All', on_click=lambda: ui.navigate.to('/orders')).classes('bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-medium')
                         
                         orders = [
                             {'id': 'ORD-001', 'customer': 'John Doe', 'product': 'iPhone 14 Pro', 'amount': 4500, 'status': 'Pending', 'date': '2024-01-20'},
@@ -82,7 +87,12 @@ def show_dashboard_page(auth_state=None):
                         
                         with ui.element('div').classes('space-y-3'):
                             for order in orders:
-                                with ui.element('div').classes('flex items-center justify-between p-3 border border-gray-200 rounded-lg'):
+                                def make_order_click_handler(o):
+                                    def view_order():
+                                        ui.navigate.to(f"/orders?order_id={o['id']}")
+                                    return view_order
+                                
+                                with ui.element('div').classes('flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer').on('click', make_order_click_handler(order)):
                                     with ui.element('div'):
                                         ui.label(f'#{order["id"]}').classes('font-semibold text-gray-800')
                                         ui.label(f'{order["customer"]} - {order["product"]}').classes('text-sm text-gray-600')
@@ -163,11 +173,8 @@ def show_dashboard_page(auth_state=None):
                             data = response.json()
                             adverts = data.get('data', [])
                             
-                            # Filter adverts by current user (in real app, this would be done by backend)
-                            if auth_state and auth_state.user_email:
-                                user_adverts = [ad for ad in adverts if ad.get('vendor_email') == auth_state.user_email]
-                            else:
-                                user_adverts = adverts  # Show all if no auth state
+                            # For demo purposes, show all adverts (in real app, filter by user)
+                            user_adverts = adverts
                             
                             if not user_adverts:
                                 with ui.element('div').classes('text-center py-12'):
@@ -177,30 +184,57 @@ def show_dashboard_page(auth_state=None):
                                     ui.button('Post Advert', on_click=lambda: ui.navigate.to('/add_event')).classes('bg-primary hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold')
                                 return
                             
-                            # Create enhanced table
+                            # Create enhanced table with image preview
                             with ui.table(columns=[
+                                {'name': 'image', 'label': 'Image', 'field': 'image'},
                                 {'name': 'title', 'label': 'Title', 'field': 'title'},
                                 {'name': 'category', 'label': 'Category', 'field': 'category'},
                                 {'name': 'price', 'label': 'Price', 'field': 'price'},
-                                {'name': 'views', 'label': 'Views', 'field': 'views'},
                                 {'name': 'status', 'label': 'Status', 'field': 'status'},
                                 {'name': 'actions', 'label': 'Actions', 'field': 'actions'}
                             ], rows=[]).classes('w-full'):
                                 for advert in user_adverts:
                                     with ui.table_row():
+                                        # Image cell
+                                        with ui.table_cell():
+                                            image_data = advert.get('image', '')
+                                            if image_data and isinstance(image_data, str):
+                                                if image_data.startswith('http'):
+                                                    # Direct URL (like Cloudinary)
+                                                    try:
+                                                        ui.image(image_data).classes('w-16 h-16 object-cover rounded')
+                                                    except:
+                                                        ui.icon('image').classes('text-4xl text-gray-400')
+                                                elif image_data.startswith('data:'):
+                                                    # Base64 data URL
+                                                    try:
+                                                        ui.image(image_data).classes('w-16 h-16 object-cover rounded')
+                                                    except:
+                                                        ui.icon('image').classes('text-4xl text-gray-400')
+                                                elif len(image_data) > 50:
+                                                    # Assume it's base64 data without prefix
+                                                    try:
+                                                        ui.image(f'data:image/jpeg;base64,{image_data}').classes('w-16 h-16 object-cover rounded')
+                                                    except:
+                                                        ui.icon('image').classes('text-4xl text-gray-400')
+                                                else:
+                                                    ui.icon('image').classes('text-4xl text-gray-400')
+                                            else:
+                                                ui.icon('image').classes('text-4xl text-gray-400')
+                                        
                                         ui.table_cell(advert.get('title', 'N/A'))
                                         ui.table_cell(advert.get('category', 'N/A'))
                                         ui.table_cell(f"GHS {advert.get('price', 0):,.2f}")
-                                        ui.table_cell(f"{advert.get('views', 0)}")
                                         ui.table_cell('Active')
                                         with ui.table_cell():
                                             with ui.row().classes('gap-2'):
-                                                ui.button('View', on_click=lambda a=advert: ui.navigate.to(f"/view_event?title={a.get('title', '')}")).classes('bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm')
-                                                ui.button('Edit', on_click=lambda a=advert: ui.navigate.to(f"/edit_event?title={a.get('title', '')}")).classes('bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm')
+                                                ui.button('View', on_click=lambda a=advert: ui.navigate.to(f"/view_event?title={a.get('title', '')}&id={a.get('id', '')}")).classes('bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm')
+                                                ui.button('Edit', on_click=lambda a=advert: ui.navigate.to(f"/edit_event?title={a.get('title', '')}&id={a.get('id', '')}")).classes('bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm')
                                                 ui.button('Delete', on_click=lambda a=advert: delete_advert(a.get('title', ''))).classes('bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm')
                         
                         except Exception as e:
                             ui.notify(f"Error loading adverts: {e}", type='negative')
+                            print(f"Dashboard error: {e}")
                     
                     ui.timer(0.1, load_adverts, once=True)
                 
@@ -216,3 +250,9 @@ def show_dashboard_page(auth_state=None):
                         ui.notify(f"Error deleting advert: {e}", type='negative')
                 
                 adverts_table()
+
+def delete_demo_product(product_title: str):
+    """Delete a demo product from the Recent Products section"""
+    ui.notify(f'Demo product "{product_title}" would be deleted in a real implementation', type='info')
+    # In a real implementation, this would make an API call to delete the product
+    # For now, just show a notification

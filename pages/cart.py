@@ -88,9 +88,13 @@ def show_cart_page(auth_state=None):
                                                 
                                                 # Stock status
                                                 if item['in_stock']:
-                                                    ui.label('In Stock', icon='check_circle').classes('text-green-600 text-sm mt-1')
+                                                    with ui.row().classes('items-center gap-1 mt-1'):
+                                                        ui.icon('check_circle').classes('text-green-600 text-sm')
+                                                        ui.label('In Stock').classes('text-green-600 text-sm')
                                                 else:
-                                                    ui.label('Out of Stock', icon='cancel').classes('text-red-600 text-sm mt-1')
+                                                    with ui.row().classes('items-center gap-1 mt-1'):
+                                                        ui.icon('cancel').classes('text-red-600 text-sm')
+                                                        ui.label('Out of Stock').classes('text-red-600 text-sm')
                                             
                                             # Quantity Controls
                                             with ui.element('div').classes('flex items-center gap-2'):
@@ -197,15 +201,18 @@ def show_cart_page(auth_state=None):
 
 def update_quantity(item_id, change):
     """Update item quantity in cart"""
-    ui.notify(f'Quantity updated', type='info')
+    ui.notify(f'Quantity updated for item {item_id}', type='info')
     # In a real implementation, this would update the cart state
+    # For now, just show a notification
 
 def remove_from_cart(item_id):
     """Remove item from cart"""
-    ui.notify(f'Item removed from cart', type='info')
+    ui.notify(f'Item {item_id} removed from cart', type='positive')
     # In a real implementation, this would remove the item from cart
+    # For now, just show a notification
 
 def add_to_cart(item):
     """Add item to cart"""
     ui.notify(f'{item["name"]} added to cart', type='positive')
     # In a real implementation, this would add the item to cart
+    # For now, just show a notification

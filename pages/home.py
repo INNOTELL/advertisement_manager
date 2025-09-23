@@ -55,59 +55,193 @@ def show_home_page():
                                 ui.icon(category['icon']).classes('text-gray-600 text-lg')
                                 ui.label(category['name']).classes('text-gray-700 font-medium')
                 
-                # Center - Main Promotional Banner
+                # Center - Main Promotional Banner Slideshow
                 with ui.element('div').classes('lg:col-span-2'):
-                    with ui.element('div').classes('bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-lg overflow-hidden relative h-96 w-full shadow-lg'):
-                        # Background decorative elements
-                        with ui.element('div').classes('absolute top-4 right-4 w-16 h-16 bg-teal-500 rounded-full opacity-20'):
-                            pass
-                        with ui.element('div').classes('absolute top-8 right-12 w-8 h-8 bg-teal-400 rounded-full opacity-30'):
-                            pass
+                    # Slideshow container
+                    slideshow_container = ui.element('div').classes('relative h-96 w-full rounded-lg overflow-hidden shadow-lg')
+                    
+                    # Define slides data
+                    slides_data = [
+                        {
+                            'title': 'HOME MAKEOVER',
+                            'subtitle': 'UP TO 45% OFF',
+                            'disclaimer': 'T & C\'s Apply',
+                            'bg_color': 'from-teal-600 to-teal-700',
+                            'accent_color': 'teal',
+                            'products': [
+                                {'icon': 'checkroom', 'label': 'Clothes'},
+                                {'icon': 'sports', 'label': 'Shoes'}
+                            ],
+                            'people': [
+                                {'icon': 'person', 'label': 'Woman'},
+                                {'icon': 'person', 'label': 'Man'}
+                            ],
+                            'cta': 'SHOP NOW'
+                        },
+                        {
+                            'title': 'ELECTRONICS SALE',
+                            'subtitle': 'UP TO 60% OFF',
+                            'disclaimer': 'Limited Time Offer',
+                            'bg_color': 'from-blue-600 to-blue-700',
+                            'accent_color': 'blue',
+                            'products': [
+                                {'icon': 'phone_android', 'label': 'Phones'},
+                                {'icon': 'computer', 'label': 'Laptops'}
+                            ],
+                            'people': [
+                                {'icon': 'headset', 'label': 'Gaming'},
+                                {'icon': 'tv', 'label': 'TVs'}
+                            ],
+                            'cta': 'SHOP ELECTRONICS'
+                        },
+                        {
+                            'title': 'FASHION WEEK',
+                            'subtitle': 'UP TO 50% OFF',
+                            'disclaimer': 'New Arrivals',
+                            'bg_color': 'from-pink-600 to-pink-700',
+                            'accent_color': 'pink',
+                            'products': [
+                                {'icon': 'checkroom', 'label': 'Dresses'},
+                                {'icon': 'watch', 'label': 'Accessories'}
+                            ],
+                            'people': [
+                                {'icon': 'star', 'label': 'Trending'},
+                                {'icon': 'favorite', 'label': 'Favorites'}
+                            ],
+                            'cta': 'SHOP FASHION'
+                        },
+                        {
+                            'title': 'VEHICLE DEALS',
+                            'subtitle': 'UP TO 30% OFF',
+                            'disclaimer': 'Best Prices',
+                            'bg_color': 'from-gray-600 to-gray-700',
+                            'accent_color': 'gray',
+                            'products': [
+                                {'icon': 'directions_car', 'label': 'Cars'},
+                                {'icon': 'motorcycle', 'label': 'Bikes'}
+                            ],
+                            'people': [
+                                {'icon': 'local_gas_station', 'label': 'Fuel'},
+                                {'icon': 'build', 'label': 'Parts'}
+                            ],
+                            'cta': 'BROWSE VEHICLES'
+                        },
+                        {
+                            'title': 'REAL ESTATE',
+                            'subtitle': 'PRIME LOCATIONS',
+                            'disclaimer': 'Limited Offers',
+                            'bg_color': 'from-green-600 to-green-700',
+                            'accent_color': 'green',
+                            'products': [
+                                {'icon': 'home_work', 'label': 'Houses'},
+                                {'icon': 'apartment', 'label': 'Apartments'}
+                            ],
+                            'people': [
+                                {'icon': 'location_on', 'label': 'Location'},
+                                {'icon': 'trending_up', 'label': 'Investment'}
+                            ],
+                            'cta': 'VIEW PROPERTIES'
+                        }
+                    ]
+                    
+                    # Current slide index
+                    current_slide = {'index': 0}
+                    
+                    @ui.refreshable
+                    def render_slide():
+                        slide = slides_data[current_slide['index']]
                         
-                        # Main content
-                        with ui.element('div').classes('relative z-10 h-full flex items-center justify-between p-8'):
-                            # Left side - Text and products
-                            with ui.element('div').classes('flex-1 z-10'):
-                                ui.label('HOME MAKEOVER').classes('text-4xl lg:text-5xl font-bold mb-2')
-                                ui.label('UP TO 45% OFF').classes('text-2xl lg:text-3xl font-bold mb-4')
-                                ui.label('T & C\'s Apply').classes('text-sm opacity-75 mb-6')
-                                
-                                # Product showcase (clothing rack and shoes)
-                                with ui.element('div').classes('flex items-end gap-4 mb-4'):
-                                    # Clothing rack
-                                    with ui.element('div').classes('w-20 h-24 bg-white/20 rounded-lg flex flex-col items-center justify-end p-2'):
-                                        ui.icon('checkroom').classes('text-white text-2xl mb-1')
-                                        ui.label('Clothes').classes('text-white text-xs')
+                        with slideshow_container:
+                            slideshow_container.clear()
+                            with slideshow_container:
+                                with ui.element('div').classes(f'bg-gradient-to-r {slide["bg_color"]} text-white rounded-lg overflow-hidden relative h-96 w-full shadow-lg transition-all duration-500'):
+                                    # Background decorative elements
+                                    with ui.element('div').classes(f'absolute top-4 right-4 w-16 h-16 bg-{slide["accent_color"]}-500 rounded-full opacity-20'):
+                                        pass
+                                    with ui.element('div').classes(f'absolute top-8 right-12 w-8 h-8 bg-{slide["accent_color"]}-400 rounded-full opacity-30'):
+                                        pass
                                     
-                                    # Shoes
-                                    with ui.element('div').classes('w-16 h-16 bg-white/20 rounded-lg flex items-center justify-center'):
-                                        ui.icon('sports').classes('text-white text-xl')
-                                
-                                # Shop Now button
-                                ui.button('SHOP NOW').classes('bg-black hover:bg-gray-800 text-white px-6 py-3 rounded font-semibold text-lg')
-                            
-                            # Right side - People
-                            with ui.element('div').classes('flex-1 flex justify-end items-center relative hidden lg:flex'):
-                                # People illustration
-                                with ui.element('div').classes('flex items-end gap-4'):
-                                    # Woman
-                                    with ui.element('div').classes('w-16 h-20 bg-white/20 rounded-lg flex flex-col items-center justify-end p-2'):
-                                        ui.icon('person').classes('text-white text-2xl mb-1')
-                                        ui.label('Woman').classes('text-white text-xs')
-                                    
-                                    # Man
-                                    with ui.element('div').classes('w-16 h-24 bg-white/20 rounded-lg flex flex-col items-center justify-end p-2'):
-                                        ui.icon('person').classes('text-white text-2xl mb-1')
-                                        ui.label('Man').classes('text-white text-xs')
-                                
-                                # Plant
-                                with ui.element('div').classes('absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center'):
-                                    ui.icon('eco').classes('text-white text-sm')
-                        
-                        # Carousel dots
-                        with ui.element('div').classes('absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-20'):
-                            for i in range(3):
-                                ui.element('div').classes(f'w-2 h-2 rounded-full {"bg-orange-500" if i == 0 else "bg-white opacity-50"} cursor-pointer hover:bg-white')
+                                    # Main content
+                                    with ui.element('div').classes('relative z-10 h-full flex items-center justify-between p-8'):
+                                        # Left side - Text and products
+                                        with ui.element('div').classes('flex-1 z-10'):
+                                            ui.label(slide['title']).classes('text-4xl lg:text-5xl font-bold mb-2')
+                                            ui.label(slide['subtitle']).classes('text-2xl lg:text-3xl font-bold mb-4')
+                                            ui.label(slide['disclaimer']).classes('text-sm opacity-75 mb-6')
+                                            
+                                            # Product showcase
+                                            with ui.element('div').classes('flex items-end gap-4 mb-4'):
+                                                for i, product in enumerate(slide['products']):
+                                                    size_class = 'w-20 h-24' if i == 0 else 'w-16 h-16'
+                                                    with ui.element('div').classes(f'{size_class} bg-white/20 rounded-lg flex flex-col items-center justify-end p-2'):
+                                                        ui.icon(product['icon']).classes('text-white text-2xl mb-1')
+                                                        ui.label(product['label']).classes('text-white text-xs')
+                                            
+                                            # Shop Now button
+                                            def shop_now_action():
+                                                if slide['title'] == 'HOME MAKEOVER':
+                                                    ui.navigate.to('/?cat=Fashion')
+                                                elif slide['title'] == 'ELECTRONICS SALE':
+                                                    ui.navigate.to('/?cat=Electronics')
+                                                elif slide['title'] == 'FASHION WEEK':
+                                                    ui.navigate.to('/?cat=Fashion')
+                                                elif slide['title'] == 'VEHICLE DEALS':
+                                                    ui.navigate.to('/?cat=Vehicles')
+                                                elif slide['title'] == 'REAL ESTATE':
+                                                    ui.navigate.to('/?cat=Real Estate')
+                                                else:
+                                                    ui.navigate.to('/')
+                                            
+                                            ui.button(slide['cta'], on_click=shop_now_action).classes('bg-black hover:bg-gray-800 text-white px-6 py-3 rounded font-semibold text-lg')
+                                        
+                                        # Right side - People/Features
+                                        with ui.element('div').classes('flex-1 flex justify-end items-center relative hidden lg:flex'):
+                                            # Features illustration
+                                            with ui.element('div').classes('flex items-end gap-4'):
+                                                for i, person in enumerate(slide['people']):
+                                                    size_class = 'w-16 h-20' if i == 0 else 'w-16 h-24'
+                                                    with ui.element('div').classes(f'{size_class} bg-white/20 rounded-lg flex flex-col items-center justify-end p-2'):
+                                                        ui.icon(person['icon']).classes('text-white text-2xl mb-1')
+                                                        ui.label(person['label']).classes('text-white text-xs')
+                                            
+                                            # Decorative element
+                                            with ui.element('div').classes(f'absolute -bottom-2 -right-2 w-8 h-8 bg-{slide["accent_color"]}-500 rounded-full flex items-center justify-center'):
+                                                ui.icon('eco').classes('text-white text-sm')
+                    
+                    # Navigation functions
+                    def next_slide():
+                        current_slide['index'] = (current_slide['index'] + 1) % len(slides_data)
+                        render_slide()
+                    
+                    def prev_slide():
+                        current_slide['index'] = (current_slide['index'] - 1) % len(slides_data)
+                        render_slide()
+                    
+                    def go_to_slide(index):
+                        current_slide['index'] = index
+                        render_slide()
+                    
+                    # Render initial slide
+                    render_slide()
+                    
+                    # Navigation arrows
+                    with ui.element('div').classes('absolute left-4 top-1/2 transform -translate-y-1/2 z-30'):
+                        ui.button(icon='chevron_left', on_click=prev_slide).classes('w-10 h-10 bg-white/20 hover:bg-white/30 text-white rounded-full flex items-center justify-center transition-all')
+                    
+                    with ui.element('div').classes('absolute right-4 top-1/2 transform -translate-y-1/2 z-30'):
+                        ui.button(icon='chevron_right', on_click=next_slide).classes('w-10 h-10 bg-white/20 hover:bg-white/30 text-white rounded-full flex items-center justify-center transition-all')
+                    
+                    # Carousel dots
+                    with ui.element('div').classes('absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-20'):
+                        for i in range(len(slides_data)):
+                            is_active = i == current_slide['index']
+                            ui.button('', on_click=lambda idx=i: go_to_slide(idx)).classes(f'w-3 h-3 rounded-full {"bg-orange-500" if is_active else "bg-white opacity-50"} hover:bg-white transition-all')
+                    
+                    # Auto-advance slideshow
+                    def auto_advance():
+                        next_slide()
+                    
+                    ui.timer(5.0, auto_advance)  # Auto-advance every 5 seconds
                 
                 # Right Sidebar - Services and Secondary Banner
                 with ui.element('div').classes('lg:col-span-1 h-96'):
@@ -212,6 +346,13 @@ def show_home_page():
                         
                         # Post Advert Button
                         ui.button('Post Advert', on_click=post_advert, icon='add').classes('btn-primary px-4 py-2 text-sm shadow-primary hover:shadow-lg transition-all duration-200')
+                        
+                        # Refresh Button
+                        def refresh_products():
+                            products_grid.refresh()
+                            ui.notify('Products refreshed!', type='positive')
+                        
+                        ui.button('Refresh', on_click=refresh_products, icon='refresh').classes('bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 text-sm rounded-lg')
 
             # Products Grid Section
             @ui.refreshable
@@ -225,11 +366,14 @@ def show_home_page():
                             js = resp.json()
                             items = js.get("data", [])
                             
-                            # Debug: Log first item to see image data structure
+                            # Log successful data loading
                             if items:
-                                first_item = items[0]
-                                print(f"Debug - First item keys: {list(first_item.keys())}")
-                                print(f"Debug - Image field: {first_item.get('image', 'NO_IMAGE_FIELD')}")
+                                print(f"✓ Loaded {len(items)} adverts from backend")
+                                # Show first few titles for verification
+                                titles = [item.get('title', 'N/A') for item in items[:3]]
+                                print(f"  Recent adverts: {', '.join(titles)}")
+                            else:
+                                print("⚠ No adverts found in backend")
                         except Exception as e:
                             ui.notify(f"Failed to load products: {e}")
                             items = []
@@ -259,19 +403,38 @@ def show_home_page():
                                 with ui.card().classes('card hover:shadow-xl transition-all duration-300 overflow-hidden group w-full h-full fade-in'):
                                     # Product Image Container
                                     with ui.element('div').classes('relative overflow-hidden bg-gray-50 h-80'):
-                                        image_url = ad.get('image', '').strip() if ad.get('image') else ''
+                                        # Get image data from the advert
+                                        image_data = ad.get('image', '')
                                         
-                                        if image_url and (image_url.startswith('http') or image_url.startswith('data:') or image_url.startswith('/')):
-                                            # Display image from backend database with error handling
+                                        # Check if we have valid image data
+                                        has_image = False
+                                        image_url = None
+                                        
+                                        if image_data and isinstance(image_data, str):
+                                            if image_data.startswith('http'):
+                                                # Direct URL (like Cloudinary)
+                                                image_url = image_data
+                                                has_image = True
+                                            elif image_data.startswith('data:'):
+                                                # Base64 data URL
+                                                image_url = image_data
+                                                has_image = True
+                                            elif len(image_data) > 100 and not image_data.startswith('http'):
+                                                # Assume it's base64 data without prefix
+                                                image_url = f'data:image/jpeg;base64,{image_data}'
+                                                has_image = True
+                                        
+                                        if has_image and image_url:
+                                            # Display the actual image
                                             try:
-                                                ui.image(image_url).classes('w-full h-full object-cover group-hover:scale-110 transition-transform duration-500').on('error', lambda: ui.notify('Image failed to load', type='warning'))
+                                                ui.image(image_url).classes('w-full h-full object-cover group-hover:scale-110 transition-transform duration-500')
                                             except Exception as e:
-                                                # Fallback if image fails to load
-                                                with ui.element('div').classes('w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center'):
-                                                    ui.icon('image').classes('text-6xl text-gray-400 mb-2')
-                                                    ui.label('Image Error').classes('text-sm text-gray-500')
-                                        else:
-                                            # Fallback for missing or invalid images - show sample image based on category
+                                                print(f"Image display error: {e}")
+                                                # Fallback to placeholder if image fails
+                                                has_image = False
+                                        
+                                        if not has_image:
+                                            # Show category-based placeholder image
                                             category = ad.get('category', '').lower()
                                             sample_images = {
                                                 'electronics': 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=300&fit=crop',
@@ -279,10 +442,12 @@ def show_home_page():
                                                 'home': 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop',
                                                 'vehicles': 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&h=300&fit=crop',
                                                 'real estate': 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop',
-                                                'services': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop'
+                                                'services': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop',
+                                                'furniture': 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop',
+                                                'appliances': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop'
                                             }
                                             
-                                            # Try to find a matching category or use default
+                                            # Find matching category or use default
                                             sample_url = None
                                             for cat_key, url in sample_images.items():
                                                 if cat_key in category:
@@ -290,15 +455,13 @@ def show_home_page():
                                                     break
                                             
                                             if sample_url:
-                                                # Show sample image
                                                 ui.image(sample_url).classes('w-full h-full object-cover group-hover:scale-110 transition-transform duration-500')
                                             else:
-                                                # Show placeholder
+                                                # Default placeholder
                                                 with ui.element('div').classes('w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center'):
                                                     ui.icon('image').classes('text-6xl text-gray-400 mb-2')
                                                     ui.label('No Image').classes('text-sm text-gray-500')
-                                                    if image_url:
-                                                        ui.label(f'URL: {image_url[:30]}...').classes('text-xs text-gray-400 mt-1')
+                                                    ui.label(f'Category: {category}').classes('text-xs text-gray-400 mt-1')
                                         
                                         # Product Badge (New, Sale, etc.)
                                         with ui.element('div').classes('absolute top-3 left-3'):
@@ -309,14 +472,14 @@ def show_home_page():
                                         
                                         # Quick view overlay
                                         with ui.element('div').classes('absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100'):
-                                            def on_quick_view(e, title=ad['title']):
-                                                ui.navigate.to(f"/view_event?title={quote(str(title))}")
+                                            def on_quick_view(e, advert=ad):
+                                                ui.navigate.to(f"/view_event?title={quote(str(advert['title']))}&id={advert.get('id', '')}")
                                             ui.button('Quick View', on_click=on_quick_view, icon='visibility').classes('bg-white text-gray-800 px-4 py-2 rounded-lg font-medium shadow-lg hover:bg-gray-100')
                                     
                                     # Product Details
                                     with ui.element('div').classes('p-4 space-y-3'):
                                         # Product Title
-                                        ui.label(ad['title']).classes('font-semibold text-gray-800 text-sm line-clamp-2 hover:text-orange-500 cursor-pointer leading-tight').on('click', lambda t=ad['title']: ui.navigate.to(f"/view_event?title={quote(str(t))}"))
+                                        ui.label(ad['title']).classes('font-semibold text-gray-800 text-sm line-clamp-2 hover:text-orange-500 cursor-pointer leading-tight').on('click', lambda advert=ad: ui.navigate.to(f"/view_event?title={quote(str(advert['title']))}&id={advert.get('id', '')}"))
                                         
                                         # Price Section
                                         with ui.element('div').classes('space-y-1'):
@@ -342,21 +505,25 @@ def show_home_page():
                                         with ui.element('div').classes('space-y-2 mt-4'):
                                             # View Details Button
                                             ui.button('View Details', 
-                                                on_click=lambda e, t=ad['title']: ui.navigate.to(f"/view_event?title={quote(str(t))}"), 
+                                                on_click=lambda e, advert=ad: ui.navigate.to(f"/view_event?title={quote(str(advert['title']))}&id={advert.get('id', '')}"), 
                                                 icon='visibility'
                                             ).classes('btn-primary w-full py-2.5 text-sm font-semibold transition-all duration-200')
 
                                             # Secondary actions
                                             with ui.row().classes('gap-2'):
                                                 # Add to Cart Button
+                                                def add_to_cart_action(title):
+                                                    ui.notify(f'Added {title} to cart', type='positive')
+                                                    ui.navigate.to('/cart')
+                                                
                                                 ui.button('Add to Cart', 
-                                                    on_click=lambda e, t=ad['title']: (ui.notify(f'Added {t} to cart', type='positive'), ui.navigate.to('/cart')), 
+                                                    on_click=lambda e, t=ad['title']: add_to_cart_action(t), 
                                                     icon='shopping_cart'
                                                 ).classes('btn-secondary flex-1 py-2 text-sm font-medium')
                                                 
                                                 # Edit Button
                                                 ui.button('Edit', 
-                                                    on_click=lambda e, t=ad['title']: ui.navigate.to(f"/edit_event?title={quote(str(t))}"), 
+                                                    on_click=lambda e, advert=ad: ui.navigate.to(f"/edit_event?title={quote(str(advert['title']))}&id={advert.get('id', '')}"), 
                                                     icon='edit'
                                                 ).classes('btn-outline flex-1 py-2 text-sm font-medium')
                                                 

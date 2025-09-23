@@ -49,7 +49,6 @@ def show_header(auth_state=None, logout_user=None):
                         ui.navigate.to('/wishlist')
                     
                     def nav_cart():
-                        ui.notify('Navigating to cart...', type='info')
                         print("Cart button clicked - navigating to /cart")  # Debug
                         ui.navigate.to('/cart')
                     
@@ -66,7 +65,12 @@ def show_header(auth_state=None, logout_user=None):
                         ui.navigate.to('/dashboard')
                     
                     ui.button(icon='favorite_border', on_click=nav_wishlist).classes('text-gray-700 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-all').props('flat round').tooltip('Wishlist')
-                    ui.button(icon='shopping_cart', on_click=nav_cart).classes('text-gray-700 hover:text-green-500 hover:bg-green-50 p-3 rounded-full transition-all border border-gray-200 hover:border-green-300').props('flat round').tooltip('Cart')
+                    # Cart button with counter
+                    with ui.element('div').classes('relative'):
+                        ui.button(icon='shopping_cart', on_click=nav_cart).classes('text-gray-700 hover:text-green-500 hover:bg-green-50 p-3 rounded-full transition-all border border-gray-200 hover:border-green-300').props('flat round').tooltip('Cart')
+                        # Cart counter badge
+                        with ui.element('div').classes('absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold'):
+                            ui.label('3').classes('text-xs')  # Demo count - in real app, this would be dynamic
                     ui.button(icon='chat_bubble_outline', on_click=nav_messages).classes('text-gray-700 hover:text-blue-500 hover:bg-blue-50 p-2 rounded-full transition-all').props('flat round').tooltip('Messages')
                     ui.button(icon='notifications_none', on_click=nav_notifications).classes('text-gray-700 hover:text-purple-500 hover:bg-purple-50 p-2 rounded-full transition-all').props('flat round').tooltip('Notifications')
                     ui.button(icon='dashboard', on_click=nav_dashboard).classes('text-gray-700 hover:text-orange-500 hover:bg-orange-50 p-2 rounded-full transition-all').props('flat round').tooltip('Dashboard')

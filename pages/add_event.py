@@ -3,7 +3,7 @@ import requests
 from urllib.parse import quote
 
 # Backend API base URL
-base_url = "http://localhost:8000"
+from utils.api import base_url
 
 
 def show_add_event_page():
@@ -56,6 +56,13 @@ def show_add_event_page():
                         ]
                         category_select = ui.select(categories, label='Category *').classes('w-full').props('outlined')
                         
+                        locations = [
+                            'Greater Accra', 'Central Region', 'Ashanti Region', 'Brong Ahafo Region',
+                            'Eastern Region', 'Northern Region', 'Upper East Region', 'Upper West Region',
+                            'Volta Region', 'Western Region'
+                        ]
+                        location_select = ui.select(locations, value='Greater Accra', label='Location *').classes('w-full').props('outlined')
+                        
                         description = ui.textarea('Advert Description *').classes('w-full').props('outlined rows=6')
                         description.props('placeholder=Describe your product or service in detail...')
 
@@ -69,10 +76,11 @@ def show_add_event_page():
                         # Image Upload Area
                         with ui.element('div').classes('border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-orange-500 transition-colors bg-gray-50'):
                             ui.icon('cloud_upload').classes('text-4xl text-gray-400 mb-4')
-                            ui.label('Upload Advert Image').classes('text-lg font-medium text-gray-700 mb-2')
+                            ui.label('Upload Advert Image *').classes('text-lg font-medium text-gray-700 mb-2')
                             ui.label('Drag and drop or click to browse').classes('text-sm text-gray-500 mb-4')
                             ui.upload(on_upload=handle_image_upload).props('flat bordered').classes('w-full')
                             ui.label('Supported formats: JPG, PNG, GIF (Max 5MB)').classes('text-xs text-gray-400 mt-2')
+                            ui.label('Image is required to create an advert').classes('text-xs text-red-500 mt-2 font-medium')
                         
                         # Image Upload Tips
                         with ui.card().classes('p-4 bg-blue-50 border border-blue-200'):
@@ -113,8 +121,12 @@ def show_add_event_page():
 
                     async def create():
                         # Validation
-                        if not title.value or not description.value or not category_select.value:
+                        if not title.value or not description.value or not category_select.value or not location_select.value:
                             ui.notify('Please fill in all required fields', type='negative')
+                            return
+                        
+                        if image_content is None:
+                            ui.notify('Please upload an image - it is required to create an advert', type='negative')
                             return
                         try:
                             if float(price.value) <= 0:
@@ -123,9 +135,10 @@ def show_add_event_page():
                         except Exception:
                             ui.notify('Price must be a valid number', type='negative')
                             return
-                        # Make image optional for testing
+                        # Image is required by the backend
                         if image_content is None:
-                            ui.notify('No image uploaded - continuing without image', type='warning')
+                            ui.notify('Please upload an image - it is required to create an advert', type='negative')
+                            return
 
                         data_form = {
                             'title': title.value,
@@ -141,19 +154,59 @@ def show_add_event_page():
                             }
                         
                         try:
-                            # For demo purposes, simulate successful creation
-                            ui.notify('Advert posted successfully! 🎉', type='positive')
-                            ui.notify('Your advert is now live and visible to buyers across Ghana!', type='info')
+                            # Make the actual API call to create advert
+                            import asyncio
                             
-                            # Navigate to home page to see the new advert
-                            ui.timer(1.5, lambda: ui.navigate.to('/'))
+                            async def create_advert():
+                                try:
+                                    # Prepare the API call parameters
+                                    params = {
+                                        'category': category_select.value,
+                                        'location': location_select.value
+                                    }
+                                    
+                                    # Prepare form data
+                                    form_data = {
+                                        'advertiser_id': 'demo_user',  # TODO: Get from auth state
+                                        'title': title.value,
+                                        'description': description.value,
+                                        'price': float(price.value),
+                                    }
+                                    
+                                    # Make the API call
+                                    if image_content:
+                                        # With image
+                                        files = {'image': ('image.jpg', image_content, 'image/jpeg')}
+                                        response = await asyncio.to_thread(
+                                            requests.post, 
+                                            f"{base_url}/advert", 
+                                            params=params, 
+                                            data=form_data, 
+                                            files=files
+                                        )
+                                    else:
+                                        # Without image
+                                        response = await asyncio.to_thread(
+                                            requests.post, 
+                                            f"{base_url}/advert", 
+                                            params=params, 
+                                            data=form_data
+                                        )
+                                    
+                                    if response.status_code == 200:
+                                        ui.notify('Advert posted successfully! 🎉', type='positive')
+                                        ui.notify('Your advert is now live and visible to buyers across Ghana!', type='info')
+                                        
+                                        # Navigate to home page to see the new advert
+                                        ui.timer(1.5, lambda: ui.navigate.to('/'))
+                                    else:
+                                        ui.notify(f'Failed to create advert: {response.status_code} - {response.text}', type='negative')
+                                        
+                                except Exception as e:
+                                    ui.notify(f'Error creating advert: {str(e)}', type='negative')
                             
-                            # In a real app, you would make the API call:
-                            # r = requests.post(f"{base_url}/advert", data=data_form, files=files)
-                            # if r.status_code >= 400:
-                            #     ui.notify(f'Create failed: {r.text}', type='negative')
-                            #     return
-                            # ui.navigate.to(f"/view_event?title={quote(str(title.value))}")
+                            # Execute the async function
+                            asyncio.create_task(create_advert())
                             
                         except Exception as e:
                             ui.notify(f'Error: {e}', type='negative')

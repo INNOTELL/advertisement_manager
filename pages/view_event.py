@@ -1,12 +1,15 @@
 from nicegui import ui
 import requests
+import asyncio
 from urllib.parse import quote
 from utils.api import base_url
 
 def show_view_event_page():
     q = ui.context.client.request.query_params
     title = q.get('title')
-    if not title:
+    advert_id = q.get('id')  # Also check for ID parameter
+    
+    if not title and not advert_id:
         with ui.element('div').classes('container mx-auto px-4 py-8'):
             with ui.card().classes('p-6 text-center'):
                 ui.icon('error').classes('text-4xl text-red-500 mb-4')
@@ -16,10 +19,27 @@ def show_view_event_page():
         return
 
     async def load():
-        encoded = quote(str(title))
-        response = requests.get(f"{base_url}/advert_details/{encoded}")
-        json_data = response.json()
-        items = json_data.get("data", [])
+        try:
+            # First try to get all adverts and find the one we want
+            response = await asyncio.to_thread(requests.get, f"{base_url}/adverts")
+            json_data = response.json()
+            all_adverts = json_data.get("data", [])
+            
+            # Find the specific advert
+            target_advert = None
+            if advert_id:
+                target_advert = next((ad for ad in all_adverts if ad.get('id') == advert_id), None)
+            elif title:
+                target_advert = next((ad for ad in all_adverts if ad.get('title') == title), None)
+            
+            if not target_advert:
+                items = []
+            else:
+                items = [target_advert]
+                
+        except Exception as e:
+            print(f"Error loading advert details: {e}")
+            items = []
         if not items:
             with ui.element('div').classes('container mx-auto px-4 py-8'):
                 with ui.card().classes('p-6 text-center'):
