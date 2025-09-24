@@ -12,7 +12,7 @@ def show_account_page(auth_state=None):
             # Page Header
             with ui.element('div').classes('mb-8'):
                 ui.label('My Account').classes('text-3xl font-bold text-gray-800 mb-2')
-                ui.label(f'Welcome back, {auth_state.username}!').classes('text-gray-600')
+                ui.label(f'Welcome back, {auth_state.name}!').classes('text-gray-600')
             
             # Account Overview Cards
             with ui.element('div').classes('grid grid-cols-1 md:grid-cols-3 gap-6 mb-8'):
@@ -20,9 +20,9 @@ def show_account_page(auth_state=None):
                 with ui.card().classes('p-6 bg-white shadow-sm'):
                     with ui.element('div').classes('text-center'):
                         ui.icon('account_circle').classes('text-6xl text-orange-500 mb-4')
-                        ui.label(auth_state.username).classes('text-xl font-semibold text-gray-800 mb-2')
-                        ui.label(auth_state.user_email).classes('text-gray-600 mb-4')
-                        ui.label(f'Account Type: {auth_state.user_type.title()}').classes('text-sm text-orange-500 font-medium')
+                        ui.label(auth_state.name).classes('text-xl font-semibold text-gray-800 mb-2')
+                        ui.label(auth_state.email).classes('text-gray-600 mb-4')
+                        ui.label(f'Account Type: {auth_state.role.title()}').classes('text-sm text-orange-500 font-medium')
                 
                 # Orders Card
                 with ui.card().classes('p-6 bg-white shadow-sm'):
@@ -60,10 +60,10 @@ def show_account_page(auth_state=None):
                             ui.label('Personal Information').classes('text-lg font-semibold text-gray-700 mb-4')
                             
                             username_input = ui.input('Full Name').classes('w-full mb-4').props('outlined')
-                            username_input.value = auth_state.username
+                            username_input.value = auth_state.name
                             
                             email_input = ui.input('Email Address').classes('w-full mb-4').props('outlined')
-                            email_input.value = auth_state.user_email
+                            email_input.value = auth_state.email
                             
                             phone_input = ui.input('Phone Number').classes('w-full mb-4').props('outlined')
                             phone_input.value = '+233 24 123 4567'  # Demo data
@@ -126,17 +126,124 @@ def show_account_page(auth_state=None):
                             ui.label(activity['item']).classes('text-sm text-gray-600')
                         ui.label(activity['time']).classes('text-sm text-gray-500')
             
-            # Quick Actions
+            # Quick Actions - Enhanced with Real Functionality
             with ui.element('div').classes('mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'):
-                quick_actions = [
-                    {'title': 'Track Order', 'icon': 'local_shipping', 'color': 'bg-blue-500', 'action': lambda: ui.navigate.to('/track-order')},
-                    {'title': 'Support', 'icon': 'help', 'color': 'bg-green-500', 'action': lambda: ui.navigate.to('/support')},
-                    {'title': 'Settings', 'icon': 'settings', 'color': 'bg-gray-500', 'action': lambda: ui.navigate.to('/settings')},
-                    {'title': 'Logout', 'icon': 'logout', 'color': 'bg-red-500', 'action': lambda: ui.navigate.to('/logout')},
-                ]
                 
-                for action in quick_actions:
-                    with ui.card().classes('p-4 bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer').on('click', action['action']):
-                        with ui.element('div').classes('text-center'):
-                            ui.icon(action['icon']).classes(f'text-white text-2xl {action["color"]} rounded-full p-3 mx-auto mb-3')
-                            ui.label(action['title']).classes('font-medium text-gray-800')
+                # Track Order Button
+                def track_order():
+                    ui.notify('Opening order tracking...', type='info')
+                    ui.navigate.to('/track')
+                
+                with ui.card().classes('p-4 bg-white shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-blue-300').on('click', track_order):
+                    with ui.element('div').classes('text-center'):
+                        ui.icon('local_shipping').classes('text-white text-2xl bg-blue-500 rounded-full p-3 mx-auto mb-3')
+                        ui.label('Track Order').classes('font-medium text-gray-800')
+                        ui.label('Monitor your deliveries').classes('text-xs text-gray-500 mt-1')
+                
+                # Support Button
+                def open_support():
+                    ui.notify('Opening customer support...', type='info')
+                    # Create support dialog
+                    with ui.dialog() as support_dialog:
+                        with ui.card().classes('p-6 w-full max-w-md'):
+                            ui.label('Customer Support').classes('text-xl font-bold text-gray-800 mb-4')
+                            
+                            # Support options
+                            with ui.element('div').classes('space-y-3'):
+                                def live_chat():
+                                    ui.notify('Starting live chat...', type='positive')
+                                    support_dialog.close()
+                                
+                                def email_support():
+                                    ui.notify('Opening email support...', type='positive')
+                                    support_dialog.close()
+                                
+                                def phone_support():
+                                    ui.notify('Calling support: +233 24 123 4567', type='positive')
+                                    support_dialog.close()
+                                
+                                ui.button('💬 Live Chat', on_click=live_chat).classes('w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-medium')
+                                ui.button('📧 Email Support', on_click=email_support).classes('w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-medium')
+                                ui.button('📞 Phone Support', on_click=phone_support).classes('w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium')
+                            
+                            ui.button('Close', on_click=support_dialog.close).classes('w-full bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg mt-4')
+                    
+                    support_dialog.open()
+                
+                with ui.card().classes('p-4 bg-white shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-green-300').on('click', open_support):
+                    with ui.element('div').classes('text-center'):
+                        ui.icon('help').classes('text-white text-2xl bg-green-500 rounded-full p-3 mx-auto mb-3')
+                        ui.label('Support').classes('font-medium text-gray-800')
+                        ui.label('Get help & assistance').classes('text-xs text-gray-500 mt-1')
+                
+                # Settings Button
+                def open_settings():
+                    ui.notify('Opening account settings...', type='info')
+                    # Create settings dialog
+                    with ui.dialog() as settings_dialog:
+                        with ui.card().classes('p-6 w-full max-w-lg'):
+                            ui.label('Account Settings').classes('text-xl font-bold text-gray-800 mb-4')
+                            
+                            # Settings tabs
+                            with ui.element('div').classes('space-y-4'):
+                                # Notification Settings
+                                with ui.element('div').classes('p-4 bg-gray-50 rounded-lg'):
+                                    ui.label('🔔 Notifications').classes('font-semibold text-gray-800 mb-2')
+                                    with ui.element('div').classes('space-y-2'):
+                                        ui.checkbox('Email notifications', value=True).classes('text-sm')
+                                        ui.checkbox('SMS notifications', value=False).classes('text-sm')
+                                        ui.checkbox('Push notifications', value=True).classes('text-sm')
+                                
+                                # Privacy Settings
+                                with ui.element('div').classes('p-4 bg-gray-50 rounded-lg'):
+                                    ui.label('🔒 Privacy').classes('font-semibold text-gray-800 mb-2')
+                                    with ui.element('div').classes('space-y-2'):
+                                        ui.checkbox('Profile visibility', value=True).classes('text-sm')
+                                        ui.checkbox('Order history privacy', value=False).classes('text-sm')
+                                
+                                # Language Settings
+                                with ui.element('div').classes('p-4 bg-gray-50 rounded-lg'):
+                                    ui.label('🌐 Language').classes('font-semibold text-gray-800 mb-2')
+                                    ui.select(['English', 'Twi', 'Ga', 'Ewe'], value='English').classes('w-full')
+                            
+                            def save_settings():
+                                ui.notify('Settings saved successfully!', type='positive')
+                                settings_dialog.close()
+                            
+                            ui.button('Save Settings', on_click=save_settings).classes('w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg mt-4')
+                            ui.button('Close', on_click=settings_dialog.close).classes('w-full bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg mt-2')
+                    
+                    settings_dialog.open()
+                
+                with ui.card().classes('p-4 bg-white shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-gray-400').on('click', open_settings):
+                    with ui.element('div').classes('text-center'):
+                        ui.icon('settings').classes('text-white text-2xl bg-gray-500 rounded-full p-3 mx-auto mb-3')
+                        ui.label('Settings').classes('font-medium text-gray-800')
+                        ui.label('Manage preferences').classes('text-xs text-gray-500 mt-1')
+                
+                # Logout Button
+                def confirm_logout():
+                    # Create logout confirmation dialog
+                    with ui.dialog() as logout_dialog:
+                        with ui.card().classes('p-6 w-full max-w-sm'):
+                            ui.label('Confirm Logout').classes('text-xl font-bold text-gray-800 mb-4')
+                            ui.label('Are you sure you want to logout?').classes('text-gray-600 mb-6')
+                            
+                            with ui.element('div').classes('flex gap-3'):
+                                def perform_logout():
+                                    ui.notify('Logging out...', type='info')
+                                    # Import logout function from main
+                                    from main import logout_user
+                                    logout_user()
+                                    logout_dialog.close()
+                                
+                                ui.button('Yes, Logout', on_click=perform_logout).classes('flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-medium')
+                                ui.button('Cancel', on_click=logout_dialog.close).classes('flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg font-medium')
+                    
+                    logout_dialog.open()
+                
+                with ui.card().classes('p-4 bg-white shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-200 hover:border-red-300').on('click', confirm_logout):
+                    with ui.element('div').classes('text-center'):
+                        ui.icon('logout').classes('text-white text-2xl bg-red-500 rounded-full p-3 mx-auto mb-3')
+                        ui.label('Logout').classes('font-medium text-gray-800')
+                        ui.label('Sign out of account').classes('text-xs text-gray-500 mt-1')

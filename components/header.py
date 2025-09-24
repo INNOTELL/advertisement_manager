@@ -1,4 +1,6 @@
 from nicegui import ui
+from utils.auth import auth_state, logout
+from config import USER_ROLES
 
 def show_header(auth_state=None, logout_user=None):
     # Top Header Bar (Dark Grey - Jumia style) - Fixed at top
@@ -9,8 +11,11 @@ def show_header(auth_state=None, logout_user=None):
                 ui.label('•').classes('text-gray-400')
                 ui.label('24/7 Customer Support').classes('text-gray-300')
             with ui.row().classes('items-center gap-4'):
-                ui.link('Login', '/login').classes('text-gray-300 hover:text-white no-underline')
-                ui.link('Signup', '/signup').classes('text-gray-300 hover:text-white no-underline')
+                if auth_state and auth_state.is_authenticated:
+                    ui.label(f'Welcome, {auth_state.name}').classes('text-gray-300')
+                else:
+                    ui.link('Login', '/login').classes('text-gray-300 hover:text-white no-underline')
+                    ui.link('Signup', '/signup').classes('text-gray-300 hover:text-white no-underline')
     
     # Main Header (White background)
     with ui.element('div').classes('w-full bg-white shadow-sm sticky top-8 z-40 border-b border-gray-200'):
@@ -43,44 +48,109 @@ def show_header(auth_state=None, logout_user=None):
                 
                 # Navigation and Auth
                 with ui.row().classes('items-center gap-2'):
-                    # Navigation Icons with better visibility and debugging
-                    def nav_wishlist():
-                        ui.notify('Navigating to wishlist...', type='info')
-                        ui.navigate.to('/wishlist')
+                    # Theme Toggle Button
+                    def toggle_theme():
+                        ui.run_javascript('''
+                            const isDark = document.body.classList.contains('dark-mode');
+                            if (isDark) {
+                                // Switch to light mode
+                                document.body.classList.remove('dark-mode');
+                                document.body.style.backgroundColor = '#ffffff';
+                                document.body.style.color = '#111827';
+                                localStorage.setItem('theme', 'light');
+                                
+                                // Reset all elements
+                                const allElements = document.querySelectorAll('*');
+                                allElements.forEach(el => {
+                                    el.style.backgroundColor = '';
+                                    el.style.color = '';
+                                    el.style.borderColor = '';
+                                });
+                            } else {
+                                // Switch to dark mode
+                                document.body.classList.add('dark-mode');
+                                document.body.style.backgroundColor = '#1a1a1a';
+                                document.body.style.color = '#ffffff';
+                                localStorage.setItem('theme', 'dark');
+                                
+                                // Apply dark mode to elements
+                                const bgElements = document.querySelectorAll('.bg-white, .bg-gray-50, .bg-gray-100');
+                                bgElements.forEach(el => {
+                                    if (el.classList.contains('bg-white')) {
+                                        el.style.backgroundColor = '#2d2d2d';
+                                        el.style.color = '#ffffff';
+                                    }
+                                    if (el.classList.contains('bg-gray-50')) {
+                                        el.style.backgroundColor = '#2d2d2d';
+                                        el.style.color = '#ffffff';
+                                    }
+                                    if (el.classList.contains('bg-gray-100')) {
+                                        el.style.backgroundColor = '#404040';
+                                        el.style.color = '#ffffff';
+                                    }
+                                });
+                                
+                                const textElements = document.querySelectorAll('.text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500');
+                                textElements.forEach(el => {
+                                    if (el.classList.contains('text-gray-800') || el.classList.contains('text-gray-700')) {
+                                        el.style.color = '#ffffff';
+                                    }
+                                    if (el.classList.contains('text-gray-600')) {
+                                        el.style.color = '#b0b0b0';
+                                    }
+                                    if (el.classList.contains('text-gray-500')) {
+                                        el.style.color = '#888888';
+                                    }
+                                });
+                            }
+                        ''')
                     
-                    def nav_cart():
-                        print("Cart button clicked - navigating to /cart")  # Debug
-                        ui.navigate.to('/cart')
+                    ui.button(icon='dark_mode', on_click=toggle_theme).classes('text-gray-700 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-full transition-all').props('flat round').tooltip('Toggle Dark Mode')
                     
-                    def nav_messages():
-                        ui.notify('Navigating to messages...', type='info')
-                        ui.navigate.to('/messages')
-                    
-                    def nav_notifications():
-                        ui.notify('Navigating to notifications...', type='info')
-                        ui.navigate.to('/notifications')
-                    
-                    def nav_dashboard():
-                        ui.notify('Navigating to dashboard...', type='info')
-                        ui.navigate.to('/dashboard')
-                    
-                    ui.button(icon='favorite_border', on_click=nav_wishlist).classes('text-gray-700 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-all').props('flat round').tooltip('Wishlist')
-                    # Cart button with counter
-                    with ui.element('div').classes('relative'):
-                        ui.button(icon='shopping_cart', on_click=nav_cart).classes('text-gray-700 hover:text-green-500 hover:bg-green-50 p-3 rounded-full transition-all border border-gray-200 hover:border-green-300').props('flat round').tooltip('Cart')
-                        # Cart counter badge
-                        with ui.element('div').classes('absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold'):
-                            ui.label('3').classes('text-xs')  # Demo count - in real app, this would be dynamic
-                    ui.button(icon='chat_bubble_outline', on_click=nav_messages).classes('text-gray-700 hover:text-blue-500 hover:bg-blue-50 p-2 rounded-full transition-all').props('flat round').tooltip('Messages')
-                    ui.button(icon='notifications_none', on_click=nav_notifications).classes('text-gray-700 hover:text-purple-500 hover:bg-purple-50 p-2 rounded-full transition-all').props('flat round').tooltip('Notifications')
-                    ui.button(icon='dashboard', on_click=nav_dashboard).classes('text-gray-700 hover:text-orange-500 hover:bg-orange-50 p-2 rounded-full transition-all').props('flat round').tooltip('Dashboard')
-                    
-                    # Post Advert Button
-                    def nav_sell():
-                        ui.notify('Navigating to post advert...', type='info')
-                        ui.navigate.to('/add_event')
-                    
-                    ui.button('SELL', on_click=nav_sell, icon='add').classes('btn-primary px-4 py-2 font-bold text-sm shadow-primary')
+                    # Context-aware navigation based on authentication and role
+                    if auth_state and auth_state.is_authenticated:
+                        # Authenticated user navigation
+                        def nav_wishlist():
+                            ui.navigate.to('/wishlist')
+                        
+                        def nav_cart():
+                            ui.navigate.to('/cart')
+                        
+                        def nav_dashboard():
+                            ui.navigate.to('/dashboard')
+                        
+                        def nav_messages():
+                            ui.navigate.to('/messages')
+                        
+                        def nav_notifications():
+                            ui.navigate.to('/notifications')
+                        
+                        # Show different icons based on role
+                        if auth_state.is_buyer():
+                            ui.button(icon='favorite_border', on_click=nav_wishlist).classes('text-gray-700 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-all').props('flat round').tooltip('Wishlist')
+                            # Cart button with counter
+                            with ui.element('div').classes('relative'):
+                                ui.button(icon='shopping_cart', on_click=nav_cart).classes('text-gray-700 hover:text-green-500 hover:bg-green-50 p-3 rounded-full transition-all border border-gray-200 hover:border-green-300').props('flat round').tooltip('Cart')
+                                # Cart counter badge
+                                with ui.element('div').classes('absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold'):
+                                    ui.label('3').classes('text-xs')
+                        
+                        ui.button(icon='chat_bubble_outline', on_click=nav_messages).classes('text-gray-700 hover:text-blue-500 hover:bg-blue-50 p-2 rounded-full transition-all').props('flat round').tooltip('Messages')
+                        ui.button(icon='notifications_none', on_click=nav_notifications).classes('text-gray-700 hover:text-purple-500 hover:bg-purple-50 p-2 rounded-full transition-all').props('flat round').tooltip('Notifications')
+                        ui.button(icon='dashboard', on_click=nav_dashboard).classes('text-gray-700 hover:text-orange-500 hover:bg-orange-50 p-2 rounded-full transition-all').props('flat round').tooltip('Dashboard')
+                        
+                        # Vendor-specific buttons
+                        if auth_state.is_vendor():
+                            def nav_sell():
+                                ui.navigate.to('/add_event')
+                            
+                            ui.button('SELL', on_click=nav_sell, icon='add').classes('btn-primary px-4 py-2 font-bold text-sm shadow-primary')
+                    else:
+                        # Non-authenticated user - show limited navigation
+                        def nav_sell():
+                            ui.navigate.to('/signup')
+                        
+                        ui.button('SELL', on_click=nav_sell, icon='add').classes('btn-primary px-4 py-2 font-bold text-sm shadow-primary')
                     
                     if auth_state and auth_state.is_authenticated:
                         # User Profile Icon (highlighted when authenticated)

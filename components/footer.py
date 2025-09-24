@@ -83,14 +83,45 @@ def show_footer():
                             ui.link('Press', '#').classes('block text-gray-300 hover:text-primary-light no-underline')
                             ui.link('Blog', '#').classes('block text-gray-300 hover:text-primary-light no-underline')
                     
-                    # Connect
+                    # Connect With Us - Enhanced
                     with ui.element('div'):
-                        ui.label('Connect With Us').classes('text-white font-semibold mb-2 text-sm')
-                        with ui.row().classes('gap-2 mb-2'):
-                            ui.button(icon='facebook').classes('bg-blue-600 hover:bg-blue-700 text-white rounded-full p-1').props('flat round')
-                            ui.button(icon='twitter').classes('bg-blue-400 hover:bg-blue-500 text-white rounded-full p-1').props('flat round')
-                            ui.button(icon='instagram').classes('bg-pink-600 hover:bg-pink-700 text-white rounded-full p-1').props('flat round')
-                            ui.button(icon='linkedin').classes('bg-blue-800 hover:bg-blue-900 text-white rounded-full p-1').props('flat round')
+                        ui.label('Connect With Us').classes('text-white font-semibold mb-3 text-sm')
+                        ui.label('Follow us on social media for updates and offers').classes('text-gray-300 text-xs mb-3')
+                        
+                        with ui.row().classes('gap-3 mb-3'):
+                            def open_facebook():
+                                ui.notify('Opening Facebook page...', type='info')
+                            
+                            def open_instagram():
+                                ui.notify('Opening Instagram page...', type='info')
+                            
+                            def open_whatsapp():
+                                ui.notify('Opening WhatsApp chat...', type='info')
+                            
+                            def open_telegram():
+                                ui.notify('Opening Telegram channel...', type='info')
+                            
+                            # Facebook
+                            with ui.button(on_click=open_facebook).classes('bg-white hover:bg-gray-100 text-blue-600 rounded-full p-2 transition-all duration-300').props('flat round').tooltip('Follow us on Facebook'):
+                                ui.icon('facebook').classes('text-lg')
+                            
+                            # Instagram
+                            with ui.button(on_click=open_instagram).classes('bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-full p-2 transition-all duration-300').props('flat round').tooltip('Follow us on Instagram'):
+                                ui.icon('camera_alt').classes('text-lg')
+                            
+                            # WhatsApp
+                            with ui.button(on_click=open_whatsapp).classes('bg-green-500 hover:bg-green-600 text-white rounded-full p-2 transition-all duration-300').props('flat round').tooltip('Chat with us on WhatsApp'):
+                                ui.icon('chat').classes('text-lg')
+                            
+                            # Telegram
+                            with ui.button(on_click=open_telegram).classes('bg-blue-500 hover:bg-blue-600 text-white rounded-full p-2 transition-all duration-300').props('flat round').tooltip('Join our Telegram channel'):
+                                ui.icon('send').classes('text-lg')
+                        
+                        # Contact Info
+                        with ui.element('div').classes('space-y-1 text-xs text-gray-300'):
+                            ui.label('📧 support@innohub.gh').classes('block')
+                            ui.label('📞 +233 24 123 4567').classes('block')
+                            ui.label('📍 Accra, Ghana').classes('block')
                 
                 # Copyright
                 with ui.element('div').classes('border-t border-gray-700 pt-3 text-center'):

@@ -1,5 +1,63 @@
 from nicegui import ui
 
+def show_tracking_results(tracking_number):
+    """Show tracking results in a dialog"""
+    with ui.dialog() as tracking_dialog:
+        with ui.card().classes('p-6 w-full max-w-2xl'):
+            ui.label(f'Tracking Results: {tracking_number}').classes('text-xl font-bold text-gray-800 mb-4')
+            
+            # Tracking status
+            with ui.element('div').classes('mb-6'):
+                ui.label('Current Status: In Transit').classes('text-lg font-semibold text-orange-500 mb-2')
+                ui.label('Estimated Delivery: Tomorrow, 2:00 PM').classes('text-gray-600')
+            
+            # Tracking timeline
+            with ui.element('div').classes('mb-6'):
+                ui.label('Delivery Timeline').classes('text-lg font-semibold text-gray-800 mb-4')
+                
+                timeline = [
+                    {'status': 'Delivered', 'location': 'Accra, Ghana', 'time': 'Tomorrow, 2:00 PM', 'completed': False},
+                    {'status': 'Out for Delivery', 'location': 'Accra Distribution Center', 'time': 'Today, 8:00 AM', 'completed': True},
+                    {'status': 'In Transit', 'location': 'Kumasi Hub', 'time': 'Yesterday, 6:00 PM', 'completed': True},
+                    {'status': 'Package Processed', 'location': 'Kumasi Hub', 'time': 'Yesterday, 4:00 PM', 'completed': True},
+                    {'status': 'Order Confirmed', 'location': 'InnoHub Warehouse', 'time': '2 days ago, 10:00 AM', 'completed': True}
+                ]
+                
+                for i, step in enumerate(timeline):
+                    with ui.element('div').classes('flex items-start gap-3 mb-3'):
+                        if step['completed']:
+                            ui.icon('check_circle').classes('text-green-500 text-xl')
+                        else:
+                            ui.icon('radio_button_unchecked').classes('text-gray-400 text-xl')
+                        
+                        with ui.element('div').classes('flex-1'):
+                            ui.label(step['status']).classes('font-medium text-gray-800')
+                            ui.label(step['location']).classes('text-sm text-gray-600')
+                            ui.label(step['time']).classes('text-xs text-gray-500')
+            
+            # Package details
+            with ui.element('div').classes('mb-6 p-4 bg-gray-50 rounded-lg'):
+                ui.label('Package Details').classes('font-semibold text-gray-800 mb-2')
+                with ui.element('div').classes('grid grid-cols-2 gap-4 text-sm'):
+                    ui.label('Weight: 2.5 kg').classes('text-gray-600')
+                    ui.label('Dimensions: 30x20x15 cm').classes('text-gray-600')
+                    ui.label('Service: Standard Delivery').classes('text-gray-600')
+                    ui.label('Carrier: InnoHub Logistics').classes('text-gray-600')
+            
+            # Actions
+            with ui.element('div').classes('flex gap-3'):
+                def share_tracking():
+                    ui.notify('Tracking link copied to clipboard!', type='positive')
+                
+                def contact_support():
+                    ui.notify('Opening customer support...', type='info')
+                
+                ui.button('Share Tracking', on_click=share_tracking, icon='share').classes('flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg')
+                ui.button('Contact Support', on_click=contact_support, icon='support').classes('flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg')
+                ui.button('Close', on_click=tracking_dialog.close).classes('bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg')
+    
+    tracking_dialog.open()
+
 def show_track_page(auth_state=None):
     with ui.element('div').classes('min-h-screen bg-white py-8'):
         with ui.element('div').classes('container mx-auto px-4 max-w-6xl'):
@@ -18,9 +76,32 @@ def show_track_page(auth_state=None):
                 with ui.element('div').classes('max-w-md mx-auto'):
                     with ui.row().classes('gap-3'):
                         tracking_input = ui.input('Enter tracking number').classes('flex-1').props('outlined')
-                        ui.button('Track', icon='search').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg')
+                        
+                        def track_package():
+                            tracking_number = tracking_input.value.strip()
+                            if not tracking_number:
+                                ui.notify('Please enter a tracking number', type='negative')
+                                return
+                            
+                            # Simulate tracking lookup
+                            ui.notify(f'Tracking package: {tracking_number}', type='info')
+                            
+                            # Show tracking results
+                            show_tracking_results(tracking_number)
+                        
+                        ui.button('Track', on_click=track_package, icon='search').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg')
                     
                     ui.label('Example: INH123456789').classes('text-sm text-gray-500 mt-2 text-center')
+                    
+                    # Recent tracking numbers
+                    with ui.element('div').classes('mt-4'):
+                        ui.label('Recent Tracking Numbers:').classes('text-sm font-medium text-gray-700 mb-2')
+                        recent_tracking = ['INH123456789', 'INH987654321', 'INH555666777']
+                        for tracking_num in recent_tracking:
+                            def track_recent(tn=tracking_num):
+                                tracking_input.value = tn
+                                track_package()
+                            ui.button(tracking_num, on_click=track_recent).classes('text-xs bg-white hover:bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-300 mr-2 mb-1')
 
             # Main Content
             with ui.element('div').classes('grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'):

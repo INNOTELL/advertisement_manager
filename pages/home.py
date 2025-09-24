@@ -7,7 +7,7 @@ from urllib.parse import quote
 from utils.api import base_url
 
 
-def show_home_page():
+def show_home_page(auth_state=None):
     # Data is fetched inside the grid renderer to ensure freshness
     deleted_titles = set()
 
@@ -18,16 +18,116 @@ def show_home_page():
     # Jumia-style homepage layout
     with ui.element("div").classes("min-h-screen bg-white overflow-x-hidden w-full max-w-full pb-20 md:pb-0"):
         
-        # Welcome Banner at the top
-        with ui.element('div').style("background-image:url(assets/img.jpg)").classes('w-full h-[80%] bg-gradient-to-r from-blue-300 via-blue-500 to-blue-700 text-white py-6 sm:py-8 mb-6 overflow-hidden'):
-            with ui.element('div').classes('container mx-auto px-4 text-center max-w-full'):
-                with ui.element('div').classes('flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4 flex-wrap'):
-                    ui.label('INNO').classes('text-2xl sm:text-4xl font-bold text-white')
-                    ui.icon('star').classes('text-orange-300 text-xl sm:text-3xl')
-                    ui.label('HUB').classes('text-2xl sm:text-4xl font-bold text-white')
-                ui.label('Ghana').classes('text-sm sm:text-lg text-orange-100 mb-2')
-                ui.label('Buy and Sell all your products from the comfort of your home').classes('text-sm sm:text-xl font-semibold text-white mb-3 sm:mb-4 break-words px-2')
-                ui.label('Welcome to InnoHub - Your Ultimate Marketplace!').classes('text-sm sm:text-lg text-orange-100 break-words px-2')
+        # Hero Slideshow Section
+        with ui.element('div').classes('w-full h-96 mb-6 overflow-hidden relative'):
+            # Slideshow images with Product Categories and Items
+            slideshow_images = [
+                {
+                    'url': 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1200&h=600&fit=crop&crop=center',
+                    'title': 'Electronics & Gadgets',
+                    'subtitle': 'Smartphones, laptops, tablets, and tech accessories'
+                },
+                {
+                    'url': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&h=600&fit=crop&crop=center',
+                    'title': 'Fashion & Clothing',
+                    'subtitle': 'Men\'s and women\'s clothing, shoes, and accessories'
+                },
+                {
+                    'url': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&h=600&fit=crop&crop=center',
+                    'title': 'Home & Furniture',
+                    'subtitle': 'Furniture, home decor, kitchen items, and appliances'
+                },
+                {
+                    'url': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1200&h=600&fit=crop&crop=center',
+                    'title': 'Health & Beauty',
+                    'subtitle': 'Skincare, cosmetics, health products, and wellness items'
+                },
+                {
+                    'url': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1200&h=600&fit=crop&crop=center',
+                    'title': 'Sports & Fitness',
+                    'subtitle': 'Sports equipment, fitness gear, and outdoor activities'
+                }
+            ]
+            
+            # Create slideshow container
+            slideshow_container = ui.element('div').classes('relative w-full h-full')
+            current_slide = {'index': 0}
+            slide_elements = []
+            dot_elements = []
+            
+            # Create all slide elements (initially hidden)
+            for i, slide in enumerate(slideshow_images):
+                slide_div = ui.element('div').classes('absolute inset-0 w-full h-full transition-opacity duration-1000')
+                slide_div.style(f"background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('{slide['url']}')")
+                slide_div.classes('bg-cover bg-center bg-no-repeat')
+                
+                with slide_div:
+                    with ui.element('div').classes('absolute inset-0 flex flex-col justify-center items-center text-white text-center px-4'):
+                        # Main brand logo with star
+                        with ui.element('div').classes('flex items-center justify-center gap-3 mb-4 flex-wrap'):
+                            ui.label('INNO').classes('text-4xl sm:text-6xl font-bold text-white drop-shadow-lg')
+                            ui.icon('star').classes('text-yellow-400 text-3xl sm:text-5xl drop-shadow-lg')
+                            ui.label('HUB').classes('text-4xl sm:text-6xl font-bold text-white drop-shadow-lg')
+                        
+                        # Location
+                        ui.label('Ghana').classes('text-lg sm:text-xl text-yellow-200 mb-4 font-medium drop-shadow-md')
+                        
+                        # Dynamic title and subtitle
+                        ui.label(slide['title']).classes('text-lg sm:text-2xl font-semibold text-white mb-2 break-words px-4 drop-shadow-md max-w-4xl mx-auto')
+                        ui.label(slide['subtitle']).classes('text-base sm:text-lg text-yellow-100 break-words px-4 drop-shadow-md mb-6')
+                        
+                        # Call to action buttons
+                        with ui.element('div').classes('flex flex-col sm:flex-row gap-4 justify-center items-center'):
+                            ui.button('Browse Ads', on_click=lambda: ui.navigate.to('/?cat=Electronics')).classes('bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300')
+                            ui.button('Post Ad', on_click=lambda: ui.navigate.to('/add_event')).classes('bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300')
+                
+                slide_elements.append(slide_div)
+                if i == 0:
+                    slide_div.classes('opacity-100')
+                else:
+                    slide_div.classes('opacity-0')
+            
+            # Navigation dots
+            with ui.element('div').classes('absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-20'):
+                for i in range(len(slideshow_images)):
+                    dot = ui.button('', on_click=lambda i=i: change_slide(i)).classes('w-3 h-3 rounded-full border-2 border-white transition-all duration-300')
+                    if i == 0:
+                        dot.classes('bg-white')
+                    else:
+                        dot.classes('bg-transparent hover:bg-white/50')
+                    dot_elements.append(dot)
+            
+            # Navigation arrows
+            with ui.element('div').classes('absolute left-4 top-1/2 transform -translate-y-1/2 z-20'):
+                ui.button('', on_click=lambda: change_slide((current_slide['index'] - 1) % len(slideshow_images))).classes('w-12 h-12 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-all duration-300').props('icon=chevron_left')
+            
+            with ui.element('div').classes('absolute right-4 top-1/2 transform -translate-y-1/2 z-20'):
+                ui.button('', on_click=lambda: change_slide((current_slide['index'] + 1) % len(slideshow_images))).classes('w-12 h-12 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-all duration-300').props('icon=chevron_right')
+            
+            def change_slide(index):
+                current_slide['index'] = index
+                
+                # Hide all slides
+                for slide in slide_elements:
+                    slide.classes('opacity-0', remove='opacity-100')
+                
+                # Show current slide
+                slide_elements[index].classes('opacity-100', remove='opacity-0')
+                
+                # Update dots
+                for i, dot in enumerate(dot_elements):
+                    if i == index:
+                        dot.classes('bg-white', remove='bg-transparent')
+                    else:
+                        dot.classes('bg-transparent', remove='bg-white')
+            
+            # Auto-advance slideshow every 5 seconds
+            def auto_advance():
+                next_index = (current_slide['index'] + 1) % len(slideshow_images)
+                change_slide(next_index)
+            
+            # Start auto-advance timer
+            ui.timer(5.0, auto_advance, active=True)
         # Main Content Area - Jumia Style Hero Section
         with ui.element('div').classes('container mx-auto px-4 py-8 max-w-8xl mb-8'):
             with ui.element('div').classes('grid grid-cols-1 lg:grid-cols-4 gap-6 w-full'):
@@ -269,63 +369,50 @@ def show_home_page():
 
         # Browse By Category Section
         with ui.element('div').classes('container mx-auto px-4 py-8 max-w-8xl mb-8'):
-            with ui.card().classes('p-6 bg-white shadow-sm w-full overflow-hidden'):
-                # Define categories list outside functions for shared access
+            with ui.card().classes('p-6 bg-white shadow-sm w-full overflow-hidden rounded-lg border border-gray-200'):
+                # Define categories with proper colors and icons
                 categories = [
-                    {'name': 'Electronics', 'icon': 'phone_android', 'selected': False},
-                    {'name': 'Fashion', 'icon': 'checkroom', 'selected': False},
-                    {'name': 'Home & Garden', 'icon': 'home', 'selected': False},
-                    {'name': 'Vehicles', 'icon': 'directions_car', 'selected': True},
-                    {'name': 'Real Estate', 'icon': 'home_work', 'selected': False},
-                    {'name': 'Services', 'icon': 'handyman', 'selected': False}
+                    {'name': 'Electronics', 'icon': 'phone_android', 'color': 'text-teal-500', 'bg_color': 'bg-teal-50', 'hover_color': 'hover:bg-teal-100'},
+                    {'name': 'Fashion', 'icon': 'checkroom', 'color': 'text-teal-500', 'bg_color': 'bg-teal-50', 'hover_color': 'hover:bg-teal-100'},
+                    {'name': 'Home & Garden', 'icon': 'home', 'color': 'text-teal-500', 'bg_color': 'bg-teal-50', 'hover_color': 'hover:bg-teal-100'},
+                    {'name': 'Vehicles', 'icon': 'directions_car', 'color': 'text-black', 'bg_color': 'bg-gray-50', 'hover_color': 'hover:bg-gray-100'},
+                    {'name': 'Real Estate', 'icon': 'home_work', 'color': 'text-teal-500', 'bg_color': 'bg-teal-50', 'hover_color': 'hover:bg-teal-100'},
+                    {'name': 'Services', 'icon': 'handyman', 'color': 'text-teal-500', 'bg_color': 'bg-teal-50', 'hover_color': 'hover:bg-teal-100'}
                 ]
                 
-                # Category Header
-                with ui.row().classes('items-center justify-between mb-6'):
+                # Category Header with improved styling
+                with ui.row().classes('items-center mb-6'):
                     with ui.row().classes('items-center gap-3'):
-                        ui.element('div').classes('w-1 h-8 bg-primary rounded')
-                        ui.label('Categories').classes('text-primary font-semibold text-sm')
-                    ui.label('Browse By Category').classes('text-2xl font-bold text-primary')
-                    
-                    # Arrow buttons with functionality
-                    with ui.row().classes('gap-2'):
-                        def prev_category():
-                            # Find current selected category and select the previous one
-                            current_index = next((i for i, cat in enumerate(categories) if cat['selected']), 0)
-                            categories[current_index]['selected'] = False
-                            prev_index = (current_index - 1) % len(categories)
-                            categories[prev_index]['selected'] = True
-                            category_grid.refresh()
-                        
-                        def next_category():
-                            # Find current selected category and select the next one
-                            current_index = next((i for i, cat in enumerate(categories) if cat['selected']), 0)
-                            categories[current_index]['selected'] = False
-                            next_index = (current_index + 1) % len(categories)
-                            categories[next_index]['selected'] = True
-                            category_grid.refresh()
-                        
-                        ui.button(icon='chevron_left', on_click=prev_category).classes('w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full').props('flat round')
-                        ui.button(icon='chevron_right', on_click=next_category).classes('w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full').props('flat round')
+                        # Light blue vertical bar
+                        ui.element('div').classes('w-1 h-8 bg-blue-300 rounded')
+                        # "Categories" text in light blue
+                        ui.label('Categories').classes('text-blue-400 font-semibold text-sm')
+                    # "Browse By Category" text in dark blue
+                    ui.label('Browse By Category').classes('text-2xl font-bold text-blue-600')
                 
-                # Category Cards Grid
-                @ui.refreshable
-                def category_grid():
-                    with ui.element('div').classes('grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6 w-full overflow-hidden'):
-                        for category in categories:
-                            if category['selected']:
-                                # Selected category with primary background
-                                with ui.card().classes('card-primary p-4 text-center cursor-pointer transition-all').on('click', lambda c=category['name']: ui.navigate.to(f'/?cat={c}')):
-                                    ui.icon(category['icon']).classes('text-4xl mb-2')
-                                    ui.label(category['name']).classes('text-sm font-medium')
-                            else:
-                                # Regular category with surface background
-                                with ui.card().classes('card p-4 text-center cursor-pointer hover:border-primary hover:shadow-primary transition-all').on('click', lambda c=category['name']: ui.navigate.to(f'/?cat={c}')):
-                                    ui.icon(category['icon']).classes('text-4xl mb-2 text-secondary')
-                                    ui.label(category['name']).classes('text-sm font-medium text-secondary')
+                # Category Cards Row with improved styling
+                with ui.element('div').classes('flex gap-0 overflow-x-auto pb-2'):
+                    for i, category in enumerate(categories):
+                        # Category card with white background and shadow
+                        with ui.card().classes(f'bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center cursor-pointer hover:shadow-md transition-all duration-300 flex-shrink-0 w-32 min-w-32 {category["hover_color"]}').on('click', lambda c=category['name']: ui.navigate.to(f'/?cat={c}')):
+                            # Large centered icon with proper color
+                            ui.icon(category['icon']).classes(f'text-4xl mb-3 {category["color"]}')
+                            # Category name text with proper color
+                            ui.label(category['name']).classes(f'text-sm font-medium {category["color"]}')
+                        
+                        # Add separator line between cards (except for the last one)
+                        if i < len(categories) - 1:
+                            ui.element('div').classes('w-px bg-gray-200 flex-shrink-0')
                 
-                # Render the category grid
-                category_grid()
+                # Category description and benefits
+                with ui.element('div').classes('mt-6 pt-4 border-t border-gray-100'):
+                    with ui.row().classes('items-center justify-between'):
+                        with ui.element('div').classes('flex-1'):
+                            ui.label('Shop by category to find exactly what you need').classes('text-sm text-gray-600')
+                            ui.label('• Fast delivery • Secure payments • Quality guaranteed').classes('text-xs text-gray-500 mt-1')
+                        
+                        # View all categories button
+                        ui.button('View All Categories', on_click=lambda: ui.navigate.to('/?cat=all')).classes('bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300')
 
         # Search and Filter Section
         with ui.element('div').classes('container mx-auto px-4 py-4 max-w-8xl'):
@@ -521,11 +608,12 @@ def show_home_page():
                                                     icon='shopping_cart'
                                                 ).classes('btn-secondary flex-1 py-2 text-sm font-medium')
                                                 
-                                                # Edit Button
-                                                ui.button('Edit', 
-                                                    on_click=lambda e, advert=ad: ui.navigate.to(f"/edit_event?title={quote(str(advert['title']))}&id={advert.get('id', '')}"), 
-                                                    icon='edit'
-                                                ).classes('btn-outline flex-1 py-2 text-sm font-medium')
+                                                # Edit Button (only for vendors)
+                                                if auth_state and auth_state.is_vendor():
+                                                    ui.button('Edit', 
+                                                        on_click=lambda e, advert=ad: ui.navigate.to(f"/edit_event?title={quote(str(advert['title']))}&id={advert.get('id', '')}"), 
+                                                        icon='edit'
+                                                    ).classes('btn-outline flex-1 py-2 text-sm font-medium')
                                                 
                                                 # Wishlist Button
                                                 ui.button('', 

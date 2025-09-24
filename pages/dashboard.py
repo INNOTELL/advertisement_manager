@@ -13,8 +13,9 @@ def show_dashboard_page(auth_state=None):
         with ui.element('div').classes('container mx-auto px-4 max-w-7xl'):
             # Page Header
             with ui.element('div').classes('mb-8'):
-                ui.label('Vendor Dashboard').classes('text-3xl font-bold text-gray-800 mb-2')
-                ui.label(f'Welcome back, {auth_state.user_email}!').classes('text-gray-600')
+                dashboard_title = 'Vendor Dashboard' if auth_state.role == 'vendor' else 'Buyer Dashboard'
+                ui.label(dashboard_title).classes('text-3xl font-bold text-gray-800 mb-2')
+                ui.label(f'Welcome back, {auth_state.email}!').classes('text-gray-600')
             
             # Quick Stats
             with ui.element('div').classes('grid grid-cols-1 md:grid-cols-4 gap-6 mb-8'):

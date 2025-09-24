@@ -5,7 +5,11 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, List
 import uuid
 import requests
+import asyncio
 from utils.api import base_url
+from utils.api_client import api_client
+from utils.auth import auth_state, initialize_auth, signup, signin, logout
+from config import PROTECTED_ROUTES, VENDOR_ROUTES, USER_ROLES
 
 app.add_static_files("/assets", "assets")
 
@@ -33,17 +37,8 @@ class AdvertOut(AdvertIn):
 # ===== In-memory DB =====
 DB: Dict[str, AdvertOut] = {}
 
-# ===== Authentication State =====
-class AuthState:
-    def __init__(self):
-        self.is_authenticated = False
-        self.user_type = None  # 'vendor' or 'user'
-        self.user_email = None
-        self.username = None
-        self.user_id = None
-        self.token = None
-
-auth_state = AuthState()
+# ===== Authentication State (using utils.auth) =====
+# AuthState is now imported from utils.auth
 
 def ghsc(amount: float) -> str:
     return f"GHS {amount:,.2f}"
@@ -82,66 +77,20 @@ def delete_advert(advert_id: str):
     return {'ok': True}
 
 # ===== Authentication Functions =====
+# Authentication functions are now in utils.auth
+# These are kept for backward compatibility
 async def login_user(email: str, password: str) -> bool:
-    try:
-        print(f"Login attempt: email={email}, password={password}")  # Debug
-        # Demo login for testing - accept any email/password combination
-        if email and password and len(email) >= 3 and len(password) >= 3:
-            # Set authentication state
-            auth_state.is_authenticated = True
-            auth_state.user_email = email
-            # Use email prefix as username, or just the email if no @
-            auth_state.username = email.split('@')[0] if '@' in email else email
-            auth_state.token = "demo_token_123"
-            # Determine user type based on email content
-            auth_state.user_type = 'vendor' if any(word in email.lower() for word in ['vendor', 'seller', 'admin', 'shop']) else 'user'
-            print(f"Login successful: {auth_state.username}, type: {auth_state.user_type}")  # Debug
-            print(f"Auth state: authenticated={auth_state.is_authenticated}, email={auth_state.user_email}")  # Debug
-            return True
-        else:
-            print(f"Login failed: email={email}, password={password}")  # Debug
-        
-        # Try real API login as fallback
-        response = requests.post(f"{base_url}/Login", params={"email": email, "password": password})
-        if response.status_code == 200:
-            auth_state.is_authenticated = True
-            auth_state.user_email = email
-            auth_state.token = response.text.strip('"')
-            auth_state.user_type = 'vendor' if 'vendor' in email.lower() else 'user'
-            return True
-    except Exception as e:
-        ui.notify(f"Login failed: {e}")
-    return False
+    """Legacy login function - redirects to new auth system"""
+    return await signin(email, password)
 
 async def signup_user(email: str, username: str, password: str) -> bool:
-    try:
-        print(f"Signup attempt: email={email}, username={username}, password={password}")  # Debug
-        # Demo signup for testing - always succeed with minimal validation
-        if email and username and password and len(email) >= 3 and len(username) >= 2 and len(password) >= 3:
-            ui.notify("Account created successfully! Please login.")
-            print(f"Signup successful: {username}")  # Debug
-            return True
-        else:
-            print(f"Signup failed: email={email}, username={username}, password={password}")  # Debug
-        
-        # Try real API signup as fallback
-        response = requests.post(f"{base_url}/Sign up", params={"email": email}, 
-                               data={"username": username, "password": password})
-        if response.status_code == 200:
-            ui.notify("Account created successfully! Please login.")
-            return True
-    except Exception as e:
-        ui.notify(f"Signup failed: {e}")
-    return False
+    """Legacy signup function - redirects to new auth system"""
+    # Default to buyer role for legacy signup
+    return await signup(username, email, password, USER_ROLES["BUYER"])
 
 def logout_user():
-    auth_state.is_authenticated = False
-    auth_state.user_type = None
-    auth_state.user_email = None
-    auth_state.username = None
-    auth_state.user_id = None
-    auth_state.token = None
-    ui.navigate.to('/')
+    """Legacy logout function - redirects to new auth system"""
+    logout()
 
 # ===== Pages =====
 from components.header import show_header
@@ -163,9 +112,18 @@ from pages.track import show_track_page
 
 @ui.page('/')
 def index():
+    # Initialize authentication and API discovery on first load
+    ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
+    
     show_header(auth_state, logout_user)
-    show_home_page()
+    show_home_page(auth_state)
     show_footer()
+
+# Initialize authentication on app start
+@ui.page('/init')
+def init_auth():
+    ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
+    ui.navigate.to('/')
 
 @ui.page('/login')
 def login_page():
@@ -182,7 +140,7 @@ def signup_page():
 @ui.page('/dashboard')
 def dashboard_page():
     if not auth_state.is_authenticated:
-        ui.navigate.to('/login')
+        ui.navigate.to('/login?next=/dashboard')
         return
     show_header(auth_state, logout_user)
     show_dashboard_page(auth_state)
@@ -191,7 +149,12 @@ def dashboard_page():
 @ui.page('/add_event')
 def add_page():
     if not auth_state.is_authenticated:
-        ui.navigate.to('/login')
+        ui.navigate.to('/login?next=/add_event')
+        return
+    # Check if user is vendor
+    if not auth_state.is_vendor():
+        ui.notify("Insufficient permissions. Only vendors can create ads.", type="negative")
+        ui.navigate.to('/dashboard')
         return
     show_header(auth_state, logout_user)
     show_add_event_page()
