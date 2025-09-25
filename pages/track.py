@@ -8,8 +8,8 @@ def show_tracking_results(tracking_number):
             
             # Tracking status
             with ui.element('div').classes('mb-6'):
-                ui.label('Current Status: In Transit').classes('text-lg font-semibold text-orange-500 mb-2')
-                ui.label('Estimated Delivery: Tomorrow, 2:00 PM').classes('text-gray-600')
+                ui.label('Current Status: In Transit').classes('text-lg font-semibold text-blue-600 mb-2')
+                ui.label('Estimated Delivery: Tomorrow, 2:00 PM').classes('text-gray-700')
             
             # Tracking timeline
             with ui.element('div').classes('mb-6'):
@@ -32,17 +32,17 @@ def show_tracking_results(tracking_number):
                         
                         with ui.element('div').classes('flex-1'):
                             ui.label(step['status']).classes('font-medium text-gray-800')
-                            ui.label(step['location']).classes('text-sm text-gray-600')
-                            ui.label(step['time']).classes('text-xs text-gray-500')
+                            ui.label(step['location']).classes('text-sm text-gray-700')
+                            ui.label(step['time']).classes('text-xs text-gray-600')
             
             # Package details
             with ui.element('div').classes('mb-6 p-4 bg-gray-50 rounded-lg'):
                 ui.label('Package Details').classes('font-semibold text-gray-800 mb-2')
                 with ui.element('div').classes('grid grid-cols-2 gap-4 text-sm'):
-                    ui.label('Weight: 2.5 kg').classes('text-gray-600')
-                    ui.label('Dimensions: 30x20x15 cm').classes('text-gray-600')
-                    ui.label('Service: Standard Delivery').classes('text-gray-600')
-                    ui.label('Carrier: InnoHub Logistics').classes('text-gray-600')
+                    ui.label('Weight: 2.5 kg').classes('text-gray-700')
+                    ui.label('Dimensions: 30x20x15 cm').classes('text-gray-700')
+                    ui.label('Service: Standard Delivery').classes('text-gray-700')
+                    ui.label('Carrier: InnoHub Logistics').classes('text-gray-700')
             
             # Actions
             with ui.element('div').classes('flex gap-3'):
@@ -64,10 +64,10 @@ def show_track_page(auth_state=None):
             # Page Header
             with ui.element('div').classes('mb-8 text-center'):
                 with ui.element('div').classes('flex items-center justify-center gap-3 mb-4'):
-                    ui.icon('track_changes').classes('text-orange-500 text-4xl')
+                    ui.icon('track_changes').classes('text-blue-600 text-4xl')
                     ui.label('TRACK YOUR ORDER').classes('text-3xl font-bold text-gray-800')
-                ui.label('Stay up to date with your package delivery').classes('text-gray-600 text-lg')
-                ui.label('📍 Real-time tracking for all your orders').classes('text-orange-500 font-medium mt-2')
+                ui.label('Stay up to date with your package delivery').classes('text-gray-700 text-lg')
+                ui.label('📍 Real-time tracking for all your orders').classes('text-blue-600 font-medium mt-2')
 
             # Tracking Input Section
             with ui.card().classes('p-6 bg-gray-50 shadow-sm mb-8'):
@@ -89,19 +89,19 @@ def show_track_page(auth_state=None):
                             # Show tracking results
                             show_tracking_results(tracking_number)
                         
-                        ui.button('Track', on_click=track_package, icon='search').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg')
+                        ui.button('Track', on_click=track_package, icon='search').classes('bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg')
                     
                     ui.label('Example: INH123456789').classes('text-sm text-gray-500 mt-2 text-center')
                     
                     # Recent tracking numbers
                     with ui.element('div').classes('mt-4'):
-                        ui.label('Recent Tracking Numbers:').classes('text-sm font-medium text-gray-700 mb-2')
+                        ui.label('Recent Tracking Numbers:').classes('text-sm font-medium text-gray-800 mb-2')
                         recent_tracking = ['INH123456789', 'INH987654321', 'INH555666777']
                         for tracking_num in recent_tracking:
                             def track_recent(tn=tracking_num):
                                 tracking_input.value = tn
                                 track_package()
-                            ui.button(tracking_num, on_click=track_recent).classes('text-xs bg-white hover:bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-300 mr-2 mb-1')
+                            ui.button(tracking_num, on_click=track_recent).classes('text-xs bg-blue-50 hover:bg-blue-100 text-blue-800 px-3 py-2 rounded border border-blue-200 mr-2 mb-1 font-medium')
 
             # Main Content
             with ui.element('div').classes('grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'):
@@ -120,10 +120,10 @@ def show_track_page(auth_state=None):
                     
                     for feature in features:
                         with ui.element('div').classes('flex items-start gap-3 mb-4'):
-                            ui.icon(feature['icon']).classes('text-orange-500 text-xl mt-1')
+                            ui.icon(feature['icon']).classes('text-blue-600 text-xl mt-1')
                             with ui.element('div'):
                                 ui.label(feature['title']).classes('font-semibold text-gray-800')
-                                ui.label(feature['desc']).classes('text-sm text-gray-600')
+                                ui.label(feature['desc']).classes('text-sm text-gray-700')
 
                 # Right Column - Sample Tracking Status
                 with ui.card().classes('p-6 bg-gray-50 shadow-sm'):
@@ -162,11 +162,11 @@ def show_track_page(auth_state=None):
                 
                 with ui.element('div').classes('grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'):
                     for status in statuses:
-                        with ui.card().classes('p-4 border border-gray-200 hover:border-orange-500 transition-colors'):
+                        with ui.card().classes('p-4 border border-gray-200 hover:border-blue-500 transition-colors'):
                             with ui.element('div').classes('flex items-center gap-3 mb-2'):
                                 ui.icon(status['icon']).classes(f'text-white text-lg {status["color"]} rounded-full p-2')
                                 ui.label(status['status']).classes('font-semibold text-gray-800')
-                            ui.label(status['desc']).classes('text-sm text-gray-600')
+                            ui.label(status['desc']).classes('text-sm text-gray-700')
 
             # How to Track Section
             with ui.card().classes('p-6 bg-white shadow-sm mb-8'):
@@ -182,22 +182,22 @@ def show_track_page(auth_state=None):
                 with ui.element('div').classes('grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'):
                     for step in steps:
                         with ui.element('div').classes('text-center'):
-                            with ui.element('div').classes('w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-3'):
+                            with ui.element('div').classes('w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-3'):
                                 ui.label(step['step']).classes('text-white text-xl font-bold')
-                            ui.icon(step['icon']).classes('text-orange-500 text-2xl mb-2')
+                            ui.icon(step['icon']).classes('text-blue-600 text-2xl mb-2')
                             ui.label(step['title']).classes('font-semibold text-gray-800 mb-1')
-                            ui.label(step['desc']).classes('text-sm text-gray-600')
+                            ui.label(step['desc']).classes('text-sm text-gray-700')
 
             # CTA Section
-            with ui.element('div').classes('text-center bg-gradient-to-r from-orange-500 to-orange-600 text-white p-8 rounded-lg'):
+            with ui.element('div').classes('text-center bg-gradient-to-r from-blue-600 to-blue-700 text-white p-8 rounded-lg'):
                 ui.label('Need Help with Tracking?').classes('text-2xl font-bold mb-4')
-                ui.label('Our customer service team is here to help you track your packages').classes('text-orange-100 mb-6')
+                ui.label('Our customer service team is here to help you track your packages').classes('text-blue-100 mb-6')
                 
                 with ui.element('div').classes('flex flex-col sm:flex-row gap-4 justify-center'):
-                    ui.button('Contact Support', icon='support_agent').classes('bg-white text-orange-500 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold')
-                    ui.button('Track Another Package', icon='search').classes('bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-lg font-semibold border border-white')
+                    ui.button('Contact Support', icon='support_agent').classes('bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 rounded-lg font-semibold')
+                    ui.button('Track Another Package', icon='search').classes('bg-blue-700 hover:bg-blue-800 text-white px-8 py-3 rounded-lg font-semibold border border-white')
 
             # Contact Info
-            with ui.element('div').classes('mt-8 text-center text-gray-600'):
+            with ui.element('div').classes('mt-8 text-center text-gray-700'):
                 ui.label('Tracking Support').classes('text-lg font-semibold mb-2')
                 ui.label('📞 +233 123 456 789 | 📧 tracking@innohub.com').classes('text-sm')

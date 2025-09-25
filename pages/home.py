@@ -5,6 +5,7 @@ import json
 import time
 from urllib.parse import quote
 from utils.api import base_url
+from utils.api_client import api_client
 
 
 def show_home_page(auth_state=None):
@@ -14,6 +15,8 @@ def show_home_page(auth_state=None):
     q_params = ui.context.client.request.query_params
     q = (q_params.get('q') or '').lower()
     cat = q_params.get('cat') or ''
+    scroll_to = q_params.get('scroll') or ''
+    instant_scroll = q_params.get('instant') == 'true'
 
     # Jumia-style homepage layout
     with ui.element("div").classes("min-h-screen bg-white overflow-x-hidden w-full max-w-full pb-20 md:pb-0"):
@@ -53,7 +56,6 @@ def show_home_page(auth_state=None):
             slideshow_container = ui.element('div').classes('relative w-full h-full')
             current_slide = {'index': 0}
             slide_elements = []
-            dot_elements = []
             
             # Create all slide elements (initially hidden)
             for i, slide in enumerate(slideshow_images):
@@ -78,7 +80,7 @@ def show_home_page(auth_state=None):
                         
                         # Call to action buttons
                         with ui.element('div').classes('flex flex-col sm:flex-row gap-4 justify-center items-center'):
-                            ui.button('Browse Ads', on_click=lambda: ui.navigate.to('/?cat=Electronics')).classes('bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300')
+                            ui.button('Browse Ads', on_click=lambda: ui.navigate.to('/?cat=all')).classes('bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300')
                             ui.button('Post Ad', on_click=lambda: ui.navigate.to('/add_event')).classes('bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300')
                 
                 slide_elements.append(slide_div)
@@ -87,22 +89,7 @@ def show_home_page(auth_state=None):
                 else:
                     slide_div.classes('opacity-0')
             
-            # Navigation dots
-            with ui.element('div').classes('absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-20'):
-                for i in range(len(slideshow_images)):
-                    dot = ui.button('', on_click=lambda i=i: change_slide(i)).classes('w-3 h-3 rounded-full border-2 border-white transition-all duration-300')
-                    if i == 0:
-                        dot.classes('bg-white')
-                    else:
-                        dot.classes('bg-transparent hover:bg-white/50')
-                    dot_elements.append(dot)
             
-            # Navigation arrows
-            with ui.element('div').classes('absolute left-4 top-1/2 transform -translate-y-1/2 z-20'):
-                ui.button('', on_click=lambda: change_slide((current_slide['index'] - 1) % len(slideshow_images))).classes('w-12 h-12 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-all duration-300').props('icon=chevron_left')
-            
-            with ui.element('div').classes('absolute right-4 top-1/2 transform -translate-y-1/2 z-20'):
-                ui.button('', on_click=lambda: change_slide((current_slide['index'] + 1) % len(slideshow_images))).classes('w-12 h-12 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-all duration-300').props('icon=chevron_right')
             
             def change_slide(index):
                 current_slide['index'] = index
@@ -114,12 +101,6 @@ def show_home_page(auth_state=None):
                 # Show current slide
                 slide_elements[index].classes('opacity-100', remove='opacity-0')
                 
-                # Update dots
-                for i, dot in enumerate(dot_elements):
-                    if i == index:
-                        dot.classes('bg-white', remove='bg-transparent')
-                    else:
-                        dot.classes('bg-transparent', remove='bg-white')
             
             # Auto-advance slideshow every 5 seconds
             def auto_advance():
@@ -214,8 +195,8 @@ def show_home_page(auth_state=None):
                             'title': 'VEHICLE DEALS',
                             'subtitle': 'UP TO 30% OFF',
                             'disclaimer': 'Best Prices',
-                            'bg_color': 'from-gray-600 to-gray-700',
-                            'accent_color': 'gray',
+                            'bg_color': 'from-orange-600 to-red-600',
+                            'accent_color': 'orange',
                             'products': [
                                 {'icon': 'directions_car', 'label': 'Cars'},
                                 {'icon': 'motorcycle', 'label': 'Bikes'}
@@ -324,18 +305,7 @@ def show_home_page(auth_state=None):
                     # Render initial slide
                     render_slide()
                     
-                    # Navigation arrows
-                    with ui.element('div').classes('absolute left-4 top-1/2 transform -translate-y-1/2 z-30'):
-                        ui.button(icon='chevron_left', on_click=prev_slide).classes('w-10 h-10 bg-white/20 hover:bg-white/30 text-white rounded-full flex items-center justify-center transition-all')
                     
-                    with ui.element('div').classes('absolute right-4 top-1/2 transform -translate-y-1/2 z-30'):
-                        ui.button(icon='chevron_right', on_click=next_slide).classes('w-10 h-10 bg-white/20 hover:bg-white/30 text-white rounded-full flex items-center justify-center transition-all')
-                    
-                    # Carousel dots
-                    with ui.element('div').classes('absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-20'):
-                        for i in range(len(slides_data)):
-                            is_active = i == current_slide['index']
-                            ui.button('', on_click=lambda idx=i: go_to_slide(idx)).classes(f'w-3 h-3 rounded-full {"bg-orange-500" if is_active else "bg-white opacity-50"} hover:bg-white transition-all')
                     
                     # Auto-advance slideshow
                     def auto_advance():
@@ -367,52 +337,215 @@ def show_home_page(auth_state=None):
                                 ui.label('HOME MAKEOVER').classes('text-sm font-bold mb-1')
                                 ui.label('UP TO 45% OFF').classes('text-xs opacity-90')
 
-        # Browse By Category Section
-        with ui.element('div').classes('container mx-auto px-4 py-8 max-w-8xl mb-8'):
+        # Platform Analytics & Insights Section
+        with ui.element('div').classes('container mx-auto px-4 py-8 max-w-7xl mb-8'):
             with ui.card().classes('p-6 bg-white shadow-sm w-full overflow-hidden rounded-lg border border-gray-200'):
-                # Define categories with proper colors and icons
-                categories = [
-                    {'name': 'Electronics', 'icon': 'phone_android', 'color': 'text-teal-500', 'bg_color': 'bg-teal-50', 'hover_color': 'hover:bg-teal-100'},
-                    {'name': 'Fashion', 'icon': 'checkroom', 'color': 'text-teal-500', 'bg_color': 'bg-teal-50', 'hover_color': 'hover:bg-teal-100'},
-                    {'name': 'Home & Garden', 'icon': 'home', 'color': 'text-teal-500', 'bg_color': 'bg-teal-50', 'hover_color': 'hover:bg-teal-100'},
-                    {'name': 'Vehicles', 'icon': 'directions_car', 'color': 'text-black', 'bg_color': 'bg-gray-50', 'hover_color': 'hover:bg-gray-100'},
-                    {'name': 'Real Estate', 'icon': 'home_work', 'color': 'text-teal-500', 'bg_color': 'bg-teal-50', 'hover_color': 'hover:bg-teal-100'},
-                    {'name': 'Services', 'icon': 'handyman', 'color': 'text-teal-500', 'bg_color': 'bg-teal-50', 'hover_color': 'hover:bg-teal-100'}
-                ]
                 
-                # Category Header with improved styling
-                with ui.row().classes('items-center mb-6'):
-                    with ui.row().classes('items-center gap-3'):
+                # Platform Analytics & Insights Section
+                with ui.element('div').classes('text-center mb-6'):
+                    with ui.row().classes('items-center justify-center gap-3 mb-2'):
                         # Light blue vertical bar
                         ui.element('div').classes('w-1 h-8 bg-blue-300 rounded')
-                        # "Categories" text in light blue
-                        ui.label('Categories').classes('text-blue-400 font-semibold text-sm')
-                    # "Browse By Category" text in dark blue
-                    ui.label('Browse By Category').classes('text-2xl font-bold text-blue-600')
+                        # "Analytics" text in light blue
+                        ui.label('Analytics').classes('text-blue-400 font-semibold text-sm')
+                    # "Platform Insights" text in dark blue - centered
+                    ui.label('Platform Insights').classes('text-2xl font-bold text-blue-600')
                 
-                # Category Cards Row with improved styling
-                with ui.element('div').classes('flex gap-0 overflow-x-auto pb-2'):
-                    for i, category in enumerate(categories):
-                        # Category card with white background and shadow
-                        with ui.card().classes(f'bg-white border border-gray-200 rounded-lg shadow-sm p-6 text-center cursor-pointer hover:shadow-md transition-all duration-300 flex-shrink-0 w-32 min-w-32 {category["hover_color"]}').on('click', lambda c=category['name']: ui.navigate.to(f'/?cat={c}')):
-                            # Large centered icon with proper color
-                            ui.icon(category['icon']).classes(f'text-4xl mb-3 {category["color"]}')
-                            # Category name text with proper color
-                            ui.label(category['name']).classes(f'text-sm font-medium {category["color"]}')
+                # Live Stats and Tips Row - More Functional
+                with ui.element('div').classes('grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6'):
+                    # Live Stats Cards (4 columns)
+                    with ui.element('div').classes('lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-4'):
+                        # Total Adverts Card - Live Data
+                        with ui.card().classes('bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4 text-center hover:shadow-md transition-all duration-300'):
+                            ui.icon('inventory').classes('text-2xl text-blue-600 mb-2')
+                            ui.label('Total Adverts').classes('text-sm font-medium text-blue-700')
+                            # Live count will be updated by the stats_refresh function
+                            total_adverts_label = ui.label('Loading...').classes('text-xl font-bold text-blue-800')
                         
-                        # Add separator line between cards (except for the last one)
-                        if i < len(categories) - 1:
-                            ui.element('div').classes('w-px bg-gray-200 flex-shrink-0')
+                        # Active Users Card - Live Data
+                        with ui.card().classes('bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-4 text-center hover:shadow-md transition-all duration-300'):
+                            ui.icon('people').classes('text-2xl text-green-600 mb-2')
+                            ui.label('Active Users').classes('text-sm font-medium text-green-700')
+                            # Live count will be updated by the stats_refresh function
+                            active_users_label = ui.label('Loading...').classes('text-xl font-bold text-green-800')
+                        
+                        # Categories Card - Live Data
+                        with ui.card().classes('bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-4 text-center hover:shadow-md transition-all duration-300'):
+                            ui.icon('category').classes('text-2xl text-purple-600 mb-2')
+                            ui.label('Categories').classes('text-sm font-medium text-purple-700')
+                            # Live count will be updated by the stats_refresh function
+                            categories_label = ui.label('Loading...').classes('text-xl font-bold text-purple-800')
+                        
+                        # Success Rate Card - Live Data
+                        with ui.card().classes('bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg p-4 text-center hover:shadow-md transition-all duration-300'):
+                            ui.icon('trending_up').classes('text-2xl text-orange-600 mb-2')
+                            ui.label('Success Rate').classes('text-sm font-medium text-orange-700')
+                            # Live rate will be updated by the stats_refresh function
+                            success_rate_label = ui.label('Loading...').classes('text-xl font-bold text-orange-800')
+                    
+                    # Search Tips Card (1 column) - Compact version
+                    with ui.card().classes('lg:col-span-1 bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-300'):
+                        with ui.column().classes('gap-3 h-full justify-center'):
+                            with ui.row().classes('items-center gap-2 mb-2'):
+                                ui.icon('lightbulb').classes('text-xl text-yellow-500')
+                                ui.label('Search Tips').classes('text-sm font-semibold text-gray-800')
+                            
+                            with ui.column().classes('gap-1 text-xs text-gray-600'):
+                                ui.label('Use specific keywords').classes('text-xs')
+                                ui.label('Filter by location').classes('text-xs')
+                                ui.label('Set price range').classes('text-xs')
+                                ui.label('Contact sellers directly').classes('text-xs')
                 
-                # Category description and benefits
-                with ui.element('div').classes('mt-6 pt-4 border-t border-gray-100'):
-                    with ui.row().classes('items-center justify-between'):
-                        with ui.element('div').classes('flex-1'):
-                            ui.label('Shop by category to find exactly what you need').classes('text-sm text-gray-600')
-                            ui.label('• Fast delivery • Secure payments • Quality guaranteed').classes('text-xs text-gray-500 mt-1')
+                # Function to animate counter values
+                async def animate_counter(label, target_value, suffix=""):
+                    """Animate counter from current value to target value"""
+                    try:
+                        current_text = label.text.replace(suffix, "").replace("Loading...", "0")
+                        current_value = int(current_text) if current_text.isdigit() else 0
                         
-                        # View all categories button
-                        ui.button('View All Categories', on_click=lambda: ui.navigate.to('/?cat=all')).classes('bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300')
+                        if current_value == target_value:
+                            return
+                        
+                        # Animate from current to target
+                        steps = min(abs(target_value - current_value), 20)  # Max 20 steps
+                        if steps == 0:
+                            return
+                            
+                        step_size = (target_value - current_value) / steps
+                        
+                        for i in range(steps + 1):
+                            value = int(current_value + (step_size * i))
+                            label.text = f"{value}{suffix}"
+                            await asyncio.sleep(0.05)  # 50ms delay between steps
+                            
+                    except Exception as e:
+                        # Fallback to direct update
+                        label.text = f"{target_value}{suffix}"
+                
+                # Function to refresh live stats
+                async def refresh_live_stats():
+                    try:
+                        print("🔄 Refreshing live stats...")
+                        
+                        # Show loading state with spinner
+                        total_adverts_label.text = "⏳"
+                        active_users_label.text = "⏳"
+                        categories_label.text = "⏳"
+                        success_rate_label.text = "⏳"
+                        
+                        # Ensure API client is initialized
+                        if not api_client.routes:
+                            print("🔧 Initializing API client...")
+                            await api_client.discover_endpoints()
+                        
+                        # Get live data from API
+                        success, response = await api_client.get_ads()
+                        print(f"📡 API Response - Success: {success}")
+                        
+                        if success and response:
+                            # Count total adverts
+                            if isinstance(response, dict):
+                                adverts = response.get("data", response.get("adverts", response.get("items", [])))
+                            elif isinstance(response, list):
+                                adverts = response
+                            else:
+                                adverts = []
+                            
+                            total_count = len(adverts) if adverts else 0
+                            print(f"📊 Total adverts found: {total_count}")
+                            
+                            # Count unique categories
+                            categories_set = set()
+                            for ad in adverts:
+                                if isinstance(ad, dict) and 'category' in ad:
+                                    categories_set.add(ad['category'].lower())
+                            categories_count = len(categories_set)
+                            
+                            # Estimate active users (vendors who posted ads)
+                            active_users_set = set()
+                            for ad in adverts:
+                                if isinstance(ad, dict) and 'advertiser_id' in ad:
+                                    active_users_set.add(ad['advertiser_id'])
+                            active_users_count = len(active_users_set)
+                            
+                            # Calculate success rate (ads with complete info - title, description, price, image)
+                            ads_with_complete_info = sum(1 for ad in adverts if isinstance(ad, dict) and 
+                                                       ad.get('title') and ad.get('description') and 
+                                                       ad.get('price') and ad.get('image'))
+                            success_rate = int((ads_with_complete_info / total_count * 100)) if total_count > 0 else 0
+                            
+                            # Update labels with animation
+                            await animate_counter(total_adverts_label, total_count)
+                            await animate_counter(active_users_label, active_users_count)
+                            await animate_counter(categories_label, categories_count)
+                            await animate_counter(success_rate_label, success_rate, suffix="%")
+                            
+                            # Update status indicator
+                            try:
+                                from datetime import datetime
+                                current_time = datetime.now().strftime("%H:%M:%S")
+                                last_updated_label.text = f"Updated {current_time}"
+                            except:
+                                pass
+                            
+                            print(f"✅ Stats updated: {total_count} adverts, {active_users_count} users, {categories_count} categories, {success_rate}% success")
+                            
+                        else:
+                            # Fallback to default values if API fails
+                            total_adverts_label.text = "0"
+                            active_users_label.text = "0"
+                            categories_label.text = "0"
+                            success_rate_label.text = "0%"
+                            
+                            # Update status to show error
+                            try:
+                                last_updated_label.text = "Error - Retrying..."
+                            except:
+                                pass
+                            
+                    except Exception as e:
+                        print(f"Error refreshing stats: {e}")
+                        # Fallback to default values
+                        total_adverts_label.text = "0"
+                        active_users_label.text = "0"
+                        categories_label.text = "0"
+                        success_rate_label.text = "0%"
+                
+                # Refresh stats on page load - use ui.timer for proper execution
+                def start_refresh():
+                    async def delayed_refresh():
+                        await asyncio.sleep(0.5)
+                        await refresh_live_stats()
+                    asyncio.create_task(delayed_refresh())
+                
+                ui.timer(0.1, start_refresh, once=True)
+                
+                # Also try immediate refresh
+                ui.timer(1.0, lambda: asyncio.create_task(refresh_live_stats()), once=True)
+                
+                # Auto-refresh every 15 seconds for live analytics (more responsive)
+                ui.timer(15.0, lambda: asyncio.create_task(refresh_live_stats()), active=True)
+                
+                # Listen for custom refresh events (e.g., when new ads are added)
+                ui.run_javascript('''
+                    window.addEventListener('refreshStats', function() {
+                        // Trigger stats refresh when new content is added
+                        setTimeout(() => {
+                            // This will be handled by the auto-refresh timer
+                        }, 1000);
+                    });
+                ''')
+                
+                # Add refresh button and live status indicator
+                with ui.row().classes('justify-center items-center gap-4 mt-4'):
+                    # Live status indicator
+                    status_indicator = ui.element('div').classes('flex items-center gap-2 text-sm text-gray-600')
+                    with status_indicator:
+                        ui.icon('fiber_manual_record').classes('text-green-500 text-xs animate-pulse')
+                        last_updated_label = ui.label('Live').classes('text-green-600 font-medium')
+                    
+                    # Refresh button
+                    ui.button('Refresh Stats', on_click=refresh_live_stats, icon='refresh').classes('bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all duration-300')
 
         # Search and Filter Section
         with ui.element('div').classes('container mx-auto px-4 py-4 max-w-8xl'):
@@ -421,6 +554,14 @@ def show_home_page(auth_state=None):
                     ui.label('All Adverts').classes('text-2xl font-bold text-gray-800')
                     with ui.row().classes('gap-3 flex-wrap items-center'):
                         q_input = ui.input('Search adverts...').classes('w-48 sm:w-64').props('outlined')
+                        
+                        # Browse All Ads button - moved here for better functionality
+                        def browse_all_ads():
+                            ui.navigate.to('/?cat=all&refresh=true')
+                            products_grid.refresh()
+                            ui.notify('Loading all adverts...', type='info')
+                        
+                        ui.button('Browse All Ads', on_click=browse_all_ads, icon='refresh').classes('bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-xl')
 
                         def apply_filters():
                             qv = q_input.value or ''
@@ -448,20 +589,71 @@ def show_home_page(auth_state=None):
 
                     async def render():
                         try:
-                            # Bypass any intermediate caching using a timestamp param
-                            resp = await asyncio.to_thread(requests.get, f"{base_url}/adverts", params={"_ts": time.time()})
-                            js = resp.json()
-                            items = js.get("data", [])
+                            # Use the centralized API client to fetch all adverts
+                            from utils.api_client import api_client
                             
-                            # Log successful data loading
-                            if items:
-                                print(f"✓ Loaded {len(items)} adverts from backend")
-                                # Show first few titles for verification
-                                titles = [item.get('title', 'N/A') for item in items[:3]]
-                                print(f"  Recent adverts: {', '.join(titles)}")
+                            # Ensure API client is initialized
+                            if not api_client._discovered:
+                                print("🔧 API client not discovered, initializing...")
+                                await api_client.discover_endpoints()
+                            
+                            print("🌐 Fetching all adverts from backend...")
+                            # Try to fetch more results with parameters
+                            params = {
+                                "limit": 100,  # Try to get more results
+                                "offset": 0,   # Start from beginning
+                                "all": "true"  # Try to get all results
+                            }
+                            success, response = await api_client.get_ads(params)
+                            
+                            # If we get few results, try without parameters
+                            if success and isinstance(response, (dict, list)):
+                                if isinstance(response, dict):
+                                    items_count = len(response.get("data", response.get("adverts", response.get("items", []))))
+                                else:
+                                    items_count = len(response)
+                                if items_count < 5:
+                                    print(f"⚠️ Only {items_count} items found, trying without parameters...")
+                                    success, response = await api_client.get_ads()
+                                    print(f"📡 Retry response: {response}")
+                            
+                            print(f"📡 API Response - Success: {success}, Response type: {type(response)}")
+                            
+                            # Initialize items variable
+                            items = []
+                            
+                            if success:
+                                print(f"📥 Raw response: {response}")
+                                
+                                # Handle different response formats
+                                if isinstance(response, dict):
+                                    items = response.get("data", response.get("adverts", response.get("items", [])))
+                                    print(f"📋 Extracted items from dict: {len(items)} items")
+                                    # Check if there are more fields that might contain the data
+                                    for key in response.keys():
+                                        if isinstance(response[key], list) and len(response[key]) > len(items):
+                                            items = response[key]
+                                            print(f"📋 Found more items in '{key}': {len(items)} items")
+                                elif isinstance(response, list):
+                                    items = response
+                                    print(f"📋 Direct list response: {len(items)} items")
+                                else:
+                                    items = []
+                                    print(f"⚠️ Unexpected response format: {type(response)}")
+                                
+                                # Log successful data loading
+                                if items:
+                                    print(f"✓ Loaded {len(items)} adverts from backend")
+                                    # Show first few titles for verification
+                                    titles = [item.get('title', 'N/A') for item in items[:3]]
+                                    print(f"  Recent adverts: {', '.join(titles)}")
+                                else:
+                                    print("⚠ No adverts found in backend response")
                             else:
-                                print("⚠ No adverts found in backend")
+                                print(f"❌ Failed to fetch adverts: {response}")
+                                items = []
                         except Exception as e:
+                            print(f"❌ Error loading adverts: {e}")
                             ui.notify(f"Failed to load products: {e}")
                             items = []
 
@@ -474,7 +666,9 @@ def show_home_page(auth_state=None):
                             ok_cat = (ad['category'] == cat) if cat else True
                             return ok_q and ok_cat
 
+                        print(f"🔍 Filtering - Query: '{q}', Category: '{cat}', Total items before filter: {len(items)}")
                         items = [ad for ad in items if matches(ad)]
+                        print(f"🔍 After filtering: {len(items)} items")
 
                         if not items:
                             with ui.element('div').classes('text-center py-16'):
@@ -488,8 +682,8 @@ def show_home_page(auth_state=None):
                         with ui.element('div').classes('grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full overflow-hidden'):
                             for ad in items:
                                 with ui.card().classes('card hover:shadow-xl transition-all duration-300 overflow-hidden group w-full h-full fade-in'):
-                                    # Product Image Container
-                                    with ui.element('div').classes('relative overflow-hidden bg-gray-50 h-80'):
+                                    # Product Image Container - Portrait Frame
+                                    with ui.element('div').classes('relative overflow-hidden bg-gray-50 h-80 w-full border border-gray-200 rounded-t-lg'):
                                         # Get image data from the advert
                                         image_data = ad.get('image', '')
                                         
@@ -497,58 +691,98 @@ def show_home_page(auth_state=None):
                                         has_image = False
                                         image_url = None
                                         
-                                        if image_data and isinstance(image_data, str):
+                                        # Debug: Print image data info
+                                        print(f"🔍 Image data for '{ad.get('title', 'N/A')}': {type(image_data)}, length: {len(str(image_data)) if image_data else 0}")
+                                        
+                                        if image_data and isinstance(image_data, str) and image_data.strip():
                                             if image_data.startswith('http'):
                                                 # Direct URL (like Cloudinary)
                                                 image_url = image_data
                                                 has_image = True
+                                                print(f"✅ Using direct URL: {image_data[:50]}...")
                                             elif image_data.startswith('data:'):
                                                 # Base64 data URL
                                                 image_url = image_data
                                                 has_image = True
+                                                print(f"✅ Using data URL: {image_data[:50]}...")
                                             elif len(image_data) > 100 and not image_data.startswith('http'):
                                                 # Assume it's base64 data without prefix
                                                 image_url = f'data:image/jpeg;base64,{image_data}'
                                                 has_image = True
+                                                print(f"✅ Using base64: {image_data[:50]}...")
+                                            else:
+                                                print(f"❌ Image data too short or invalid: {image_data[:100]}...")
+                                        else:
+                                            print(f"❌ No image data for '{ad.get('title', 'N/A')}'")
                                         
                                         if has_image and image_url:
-                                            # Display the actual image
+                                            # Display the actual image with proper error handling
                                             try:
-                                                ui.image(image_url).classes('w-full h-full object-cover group-hover:scale-110 transition-transform duration-500')
+                                                # Create image element with error handling
+                                                img_element = ui.image(image_url).classes('w-full h-full object-cover group-hover:scale-110 transition-transform duration-500')
+                                                
+                                                # Add error handler to fallback to placeholder
+                                                def handle_image_error():
+                                                    print(f"Image failed to load: {image_url[:50]}...")
+                                                    # Replace with placeholder
+                                                    img_element.clear()
+                                                    with img_element:
+                                                        with ui.element('div').classes('w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center p-4'):
+                                                            category = ad.get('category', '').lower()
+                                                            category_icons = {
+                                                                'electronics': 'phone_android',
+                                                                'fashion': 'checkroom', 
+                                                                'home': 'home',
+                                                                'vehicles': 'directions_car',
+                                                                'real estate': 'home_work',
+                                                                'services': 'build',
+                                                                'furniture': 'chair',
+                                                                'appliances': 'kitchen'
+                                                            }
+                                                            icon = 'image'
+                                                            for cat_key, cat_icon in category_icons.items():
+                                                                if cat_key in category:
+                                                                    icon = cat_icon
+                                                                    break
+                                                            ui.icon(icon).classes('text-6xl text-gray-400 mb-3')
+                                                            ui.label('Image Failed').classes('text-lg text-gray-500 font-medium mb-1')
+                                                            ui.label(f'Category: {ad.get("category", "N/A")}').classes('text-sm text-gray-400')
+                                                
+                                                # Note: NiceGUI doesn't have direct on('error') support, so we'll rely on the try-catch
+                                                
                                             except Exception as e:
                                                 print(f"Image display error: {e}")
                                                 # Fallback to placeholder if image fails
                                                 has_image = False
                                         
                                         if not has_image:
-                                            # Show category-based placeholder image
-                                            category = ad.get('category', '').lower()
-                                            sample_images = {
-                                                'electronics': 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=300&fit=crop',
-                                                'fashion': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop',
-                                                'home': 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop',
-                                                'vehicles': 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400&h=300&fit=crop',
-                                                'real estate': 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop',
-                                                'services': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop',
-                                                'furniture': 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop',
-                                                'appliances': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop'
-                                            }
+                                            # Show a clean placeholder with product info
+                                            with ui.element('div').classes('w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center p-4'):
+                                                # Category icon
+                                                category = ad.get('category', '').lower()
+                                                category_icons = {
+                                                    'electronics': 'phone_android',
+                                                    'fashion': 'checkroom', 
+                                                    'home': 'home',
+                                                    'vehicles': 'directions_car',
+                                                    'real estate': 'home_work',
+                                                    'services': 'build',
+                                                    'furniture': 'chair',
+                                                    'appliances': 'kitchen'
+                                                }
+                                                
+                                                icon = 'image'
+                                                for cat_key, cat_icon in category_icons.items():
+                                                    if cat_key in category:
+                                                        icon = cat_icon
+                                                        break
                                             
-                                            # Find matching category or use default
-                                            sample_url = None
-                                            for cat_key, url in sample_images.items():
-                                                if cat_key in category:
-                                                    sample_url = url
-                                                    break
-                                            
-                                            if sample_url:
-                                                ui.image(sample_url).classes('w-full h-full object-cover group-hover:scale-110 transition-transform duration-500')
-                                            else:
-                                                # Default placeholder
-                                                with ui.element('div').classes('w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center'):
-                                                    ui.icon('image').classes('text-6xl text-gray-400 mb-2')
-                                                    ui.label('No Image').classes('text-sm text-gray-500')
-                                                    ui.label(f'Category: {category}').classes('text-xs text-gray-400 mt-1')
+                                                ui.icon(icon).classes('text-6xl text-gray-400 mb-3')
+                                                ui.label('No Image Available').classes('text-lg text-gray-500 font-medium mb-1')
+                                                ui.label(f'{ad.get("category", "Product")}').classes('text-sm text-gray-400')
+                                                
+                                                # Add a subtle border to make it look like a frame
+                                                ui.element('div').classes('absolute inset-0 border-2 border-dashed border-gray-300 rounded-lg')
                                         
                                         # Product Badge (New, Sale, etc.)
                                         with ui.element('div').classes('absolute top-3 left-3'):
@@ -557,11 +791,7 @@ def show_home_page(auth_state=None):
                                         # Wishlist button
                                         ui.button(icon='favorite_border').classes('absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white hover:scale-110 transition-all duration-200').props('flat round')
                                         
-                                        # Quick view overlay
-                                        with ui.element('div').classes('absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100'):
-                                            def on_quick_view(e, advert=ad):
-                                                ui.navigate.to(f"/view_event?title={quote(str(advert['title']))}&id={advert.get('id', '')}")
-                                            ui.button('Quick View', on_click=on_quick_view, icon='visibility').classes('bg-white text-gray-800 px-4 py-2 rounded-lg font-medium shadow-lg hover:bg-gray-100')
+                                        # Quick view overlay removed for cleaner UX
                                     
                                     # Product Details
                                     with ui.element('div').classes('p-4 space-y-3'):
@@ -596,8 +826,8 @@ def show_home_page(auth_state=None):
                                                 icon='visibility'
                                             ).classes('btn-primary w-full py-2.5 text-sm font-semibold transition-all duration-200')
 
-                                            # Secondary actions
-                                            with ui.row().classes('gap-2'):
+                                            # Secondary actions - All buttons with uniform height
+                                            with ui.row().classes('gap-2 items-stretch h-12'):
                                                 # Add to Cart Button
                                                 def add_to_cart_action(title):
                                                     ui.notify(f'Added {title} to cart', type='positive')
@@ -606,50 +836,73 @@ def show_home_page(auth_state=None):
                                                 ui.button('Add to Cart', 
                                                     on_click=lambda e, t=ad['title']: add_to_cart_action(t), 
                                                     icon='shopping_cart'
-                                                ).classes('btn-secondary flex-1 py-2 text-sm font-medium')
+                                                ).classes('btn-secondary flex-1 h-12 text-sm font-medium flex items-center justify-center')
                                                 
                                                 # Edit Button (only for vendors)
                                                 if auth_state and auth_state.is_vendor():
                                                     ui.button('Edit', 
                                                         on_click=lambda e, advert=ad: ui.navigate.to(f"/edit_event?title={quote(str(advert['title']))}&id={advert.get('id', '')}"), 
                                                         icon='edit'
-                                                    ).classes('btn-outline flex-1 py-2 text-sm font-medium')
+                                                        ).classes('btn-outline flex-1 h-12 text-sm font-medium flex items-center justify-center')
                                                 
-                                                # Wishlist Button
+                                                # Delete Button (only for vendors)
+                                                if auth_state and auth_state.is_vendor():
+                                                    ui.button('Delete', 
+                                                        on_click=lambda e, ad_id=ad.get('id', ad['title']): delete_ad(ad_id), 
+                                                        icon='delete'
+                                                    ).classes('bg-red-500 hover:bg-red-600 text-white flex-1 h-12 text-sm font-medium flex items-center justify-center')
+                                                
+                                                # Wishlist Button - Square button with same height
                                                 ui.button('', 
                                                     on_click=lambda e, t=ad['title']: ui.notify(f'Added {t} to wishlist', type='positive'), 
                                                     icon='favorite_border'
-                                                ).classes('bg-error text-white hover:bg-error p-2 rounded-lg')
+                                                ).classes('bg-error text-white hover:bg-error w-12 h-12 flex items-center justify-center rounded-lg')
 
                     ui.timer(0.05, render, once=True)
 
                 async def delete_ad(title: str) -> bool:
-                    try:
-                        safe_title = (title or "").strip()
-                        encoded = quote(str(safe_title))
-                        # Run blocking HTTP call off the event loop
-                        r = await asyncio.to_thread(requests.delete, f"{base_url}/adverts/{encoded}")
-                        if r.status_code >= 400:
-                            ui.notify(f"Delete failed: {r.status_code}: {r.text}")
-                            return False
-                        else:
-                            # API returns a plain JSON string like "Advert successfully deleted!"
-                            try:
-                                body = r.json()
-                                msg = body if isinstance(body, str) else 'Deleted'
-                            except Exception:
-                                # Fallback to raw text
-                                msg = (r.text or 'Deleted').strip().strip('"')
-                            ui.notify(msg or 'Deleted')
-                            # Optimistically remove from current view
-                            deleted_titles.add(safe_title)
-                            products_grid.refresh()
-                            return True
-                    except Exception as e:
-                        ui.notify(f"Error: {e}")
-                        return False
+                    # Show confirmation dialog
+                    with ui.dialog() as dialog, ui.card():
+                        ui.label(f'Are you sure you want to delete "{title}"?').classes('text-lg font-semibold mb-4')
+                        ui.label('This action cannot be undone.').classes('text-gray-600 mb-6')
+                        
+                        with ui.row().classes('gap-4 justify-end'):
+                            ui.button('Cancel', on_click=dialog.close).classes('bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded')
+                            
+                            async def confirm_delete():
+                                dialog.close()
+                                try:
+                                    safe_title = (title or "").strip()
+                                    # Use the API client's delete method with authentication
+                                    success, response = await api_client.delete_ad(safe_title)
+                                    
+                                    if success:
+                                        ui.notify('Advert deleted successfully', type='positive')
+                                        # Optimistically remove from current view
+                                        deleted_titles.add(safe_title)
+                                        products_grid.refresh()
+                                        return True
+                                    else:
+                                        ui.notify(f"Delete failed: {response}", type='negative')
+                                        return False
+                                except Exception as e:
+                                    ui.notify(f"Error: {e}", type='negative')
+                                    return False
+                            
+                            ui.button('Delete', on_click=confirm_delete).classes('bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded')
+                    
+                    dialog.open()
+                    return False
 
             products_grid()
+            
+            # Load More Button
+            with ui.element('div').classes('text-center mt-8 mb-4'):
+                def load_more_ads():
+                    ui.notify('Loading more adverts...', type='info')
+                    products_grid.refresh()
+                
+                ui.button('Load More Ads', on_click=load_more_ads, icon='expand_more').classes('bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-xl')
 
         # Add spacing before bottom navigation
         with ui.element('div').classes('h-8'):
@@ -675,3 +928,20 @@ def show_home_page(auth_state=None):
                 
                 # SELL Button
                 ui.button('SELL', on_click=lambda: ui.navigate.to('/add_event')).classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-bold text-sm shadow-lg')
+        
+        # Add immediate scroll functionality for returning from product view
+        if scroll_to == 'products':
+            # Use immediate scroll to prevent jarring behavior
+            ui.timer(0.05, lambda: ui.run_javascript('''
+                // Immediately scroll to products section
+                const productsElement = document.getElementById("products");
+                if (productsElement) {
+                    // Use instant scroll for immediate positioning
+                    productsElement.scrollIntoView({behavior: "instant", block: "start"});
+                    
+                    // Then apply smooth scroll for better UX
+                    setTimeout(() => {
+                        productsElement.scrollIntoView({behavior: "smooth", block: "start"});
+                    }, 100);
+                }
+            '''), once=True)

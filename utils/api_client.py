@@ -14,6 +14,7 @@ class APIClient:
         self._discovered = False
         # Ensure we always have fallback routes
         self._use_fallback_routes()
+        print(f"🔧 API Client initialized with fallback routes: {self.routes}")
     
     async def discover_endpoints(self) -> bool:
         """Discover API endpoints from OpenAPI spec"""
@@ -25,7 +26,7 @@ class APIClient:
         for url in OPENAPI_URL_CANDIDATES:
             try:
                 print(f"🌐 Trying OpenAPI URL: {url}")
-                response = await asyncio.to_thread(requests.get, url, timeout=10)
+                response = await asyncio.to_thread(requests.get, url, timeout=30)
                 print(f"📡 OpenAPI response status: {response.status_code}")
                 
                 if response.status_code == 200:
@@ -46,7 +47,8 @@ class APIClient:
         
         print("❌ OpenAPI discovery failed, using fallback routes")
         self._use_fallback_routes()
-        return False
+        self._discovered = True  # Mark as discovered even with fallback
+        return True  # Return True since we have fallback routes
     
     def _validate_openapi_spec(self, spec: Dict[str, Any]) -> bool:
         """Validate OpenAPI spec structure"""
@@ -99,6 +101,9 @@ class APIClient:
                             elif method in ["patch", "put"] and "update" in combined:
                                 self.routes["ads"]["update"] = path
                                 print(f"✅ Found ads update: {path}")
+                            elif method == "delete":
+                                self.routes["ads"]["delete"] = path
+                                print(f"✅ Found ads delete: {path}")
         
         print(f"🔍 Final discovered routes: {self.routes}")
     
@@ -106,15 +111,20 @@ class APIClient:
         """Use fallback routes if discovery fails"""
         self.routes = {
             "auth": {
-                "signin": "/auth/login",
-                "signup": "/auth/register", 
-                "me": "/auth/me"
+                "signin": "/Login",  # POST /Login with email/password as query params
+                "signup": "/SignUp",  # POST /SignUp with email/role as query params, username/password in body
+                "me": "/me"  # This might not exist, we'll handle it
             },
             "ads": {
-                "list": "/adverts",
-                "create": "/adverts",
-                "detail": "/adverts/{id}",
-                "update": "/adverts/{id}"
+                "list": "/adverts",  # GET /adverts
+                "create": "/advert",  # POST /advert
+                "detail": "/advert_details/{id}",  # GET /advert_details/{id}
+                "update": "/edit_advert/{id}",  # PUT /edit_advert/{id}
+                "delete": "/adverts/{id}"  # DELETE /adverts/{id}
+            },
+            "ai": {
+                "generate_image": "/ai/generate-image",  # POST /ai/generate-image
+                "text_generation": "/ai/generate-text"  # POST /ai/generate-text
             }
         }
     
@@ -175,8 +185,13 @@ class APIClient:
             # Handle authentication errors
             if response.status_code in [401, 403]:
                 self.clear_token()
-                ui.notify("Session expired, please sign in again", type="negative")
-                ui.navigate.to(f"/login?next={ui.context.client.request.path}")
+                # Only show UI notifications if we're in a UI context
+                try:
+                    ui.notify("Session expired, please sign in again", type="negative")
+                    ui.navigate.to(f"/login?next={ui.context.client.request.path}")
+                except (RuntimeError, AttributeError):
+                    # We're in a background task, just log the error
+                    print("⚠️ Authentication error - not in UI context")
                 return False, None
             
             # Handle other errors
@@ -205,7 +220,12 @@ class APIClient:
                 
         except Exception as e:
             print(f"❌ Request exception: {e}")
-            ui.notify(f"Network error: {str(e)}", type="negative")
+            # Only show UI notifications if we're in a UI context
+            try:
+                ui.notify(f"Network error: {str(e)}", type="negative")
+            except (RuntimeError, AttributeError):
+                # We're in a background task, just log the error
+                print(f"⚠️ Network error - not in UI context: {e}")
             return False, str(e)
     
     # Auth methods
@@ -216,9 +236,10 @@ class APIClient:
             print("❌ No signup endpoint found!")
             return False, "No signup endpoint configured"
         
-        # Backend expects email as query param, username/password as form data
+        # According to API spec: email and role as query params, username/password as form data
         params = {
-            "email": email
+            "email": email,
+            "role": role  # Add role as query param
         }
         data = {
             "username": name,
@@ -228,7 +249,7 @@ class APIClient:
         print(f"📤 Request params: {params}")
         print(f"📤 Request data: {data}")
         
-        # Use form data instead of JSON
+        # Use form data with query params (not JSON)
         try:
             url = f"{self.base_url}{endpoint}"
             response = await asyncio.to_thread(
@@ -291,6 +312,15 @@ class APIClient:
             if response.status_code == 200:
                 result = response.json()
                 print(f"✅ Success response: {result}")
+                
+                # Extract and set token
+                token = result.get('access_token') or result.get('token')
+                if token:
+                    self.set_token(token)
+                    print(f"✅ Token set successfully")
+                else:
+                    print(f"⚠️ No token found in response")
+                
                 return True, result
             else:
                 error_msg = "Request failed"
@@ -321,7 +351,121 @@ class APIClient:
     async def create_ad(self, ad_data: Dict) -> Tuple[bool, Any]:
         """Create new ad"""
         endpoint = self.routes["ads"]["create"]
-        return await self.request("POST", endpoint, ad_data)
+        
+        # Backend expects category and location as query params
+        params = {
+            "category": ad_data.get("category"),
+            "location": ad_data.get("location")
+        }
+        
+        # Backend expects multipart/form-data, not JSON
+        try:
+            url = f"{self.base_url}{endpoint}"
+            headers = {
+                "Accept": "application/json",
+                "Authorization": f"Bearer {self.token}" if self.token else ""
+            }
+            
+            print(f"🌐 HTTP POST {url}")
+            print(f"📋 Headers: {headers}")
+            print(f"📤 Params: {params}")
+            
+            # Prepare form data
+            form_data = {
+                "title": ad_data.get("title"),
+                "description": ad_data.get("description"),
+                "price": str(ad_data.get("price", 0))
+            }
+            
+            # Add optional fields
+            if "contact_name" in ad_data:
+                form_data["contact_name"] = ad_data["contact_name"]
+            if "contact_phone" in ad_data:
+                form_data["contact_phone"] = ad_data["contact_phone"]
+            
+            print(f"📤 Form data: {form_data}")
+            
+            # Handle image if provided
+            files = None
+            if "image" in ad_data and ad_data["image"]:
+                # If image is base64, we need to convert it to a file-like object
+                import base64
+                import io
+                
+                image_data = ad_data["image"]
+                if isinstance(image_data, str) and image_data.startswith('data:image'):
+                    # Extract base64 data from data URL
+                    header, encoded = image_data.split(',', 1)
+                    image_bytes = base64.b64decode(encoded)
+                elif isinstance(image_data, str):
+                    # Assume it's base64 string
+                    image_bytes = base64.b64decode(image_data)
+                else:
+                    # Assume it's already bytes
+                    image_bytes = image_data
+                
+                # Create file-like object
+                image_file = io.BytesIO(image_bytes)
+                files = {"image": ("image.jpg", image_file, "image/jpeg")}
+                print(f"📤 Image file prepared: {len(image_bytes)} bytes")
+            
+            response = await asyncio.to_thread(
+                requests.post,
+                url=url,
+                data=form_data,
+                files=files,
+                params=params,
+                headers=headers,
+                timeout=30
+            )
+            
+            print(f"📡 Response status: {response.status_code}")
+            print(f"📥 Response headers: {dict(response.headers)}")
+            
+            # Handle authentication errors
+            if response.status_code in [401, 403]:
+                self.clear_token()
+                try:
+                    ui.notify("Session expired, please sign in again", type="negative")
+                    ui.navigate.to(f"/login?next={ui.context.client.request.path}")
+                except (RuntimeError, AttributeError):
+                    print("⚠️ Authentication error - not in UI context")
+                return False, None
+            
+            # Handle other errors
+            if response.status_code >= 400:
+                error_msg = "Request failed"
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get("detail", error_data.get("message", error_msg))
+                    print(f"❌ Error response: {error_data}")
+                except:
+                    error_msg = response.text or error_msg
+                    print(f"❌ Error text: {error_msg}")
+                
+                try:
+                    ui.notify(f"Error: {error_msg}", type="negative")
+                except (RuntimeError, AttributeError):
+                    print(f"⚠️ Error notification - not in UI context")
+                return False, error_msg
+            
+            # Success
+            try:
+                result = response.json()
+                print(f"✅ Success response: {result}")
+                return True, result
+            except:
+                result = response.text
+                print(f"✅ Success text: {result}")
+                return True, result
+                
+        except Exception as e:
+            print(f"❌ Request exception: {e}")
+            try:
+                ui.notify(f"Network error: {str(e)}", type="negative")
+            except (RuntimeError, AttributeError):
+                print(f"⚠️ Network error - not in UI context: {e}")
+            return False, str(e)
     
     async def get_ad(self, ad_id: str) -> Tuple[bool, Any]:
         """Get ad details"""
@@ -331,12 +475,78 @@ class APIClient:
     async def update_ad(self, ad_id: str, ad_data: Dict) -> Tuple[bool, Any]:
         """Update ad"""
         endpoint = self.routes["ads"]["update"].format(id=ad_id)
-        return await self.request("PATCH", endpoint, ad_data)
+        return await self.request("PUT", endpoint, ad_data)
+    
+    async def update_ad_with_location(self, ad_id: str, ad_data: Dict, location: str) -> Tuple[bool, Any]:
+        """Update ad with location as query parameter"""
+        endpoint = self.routes["ads"]["update"].format(id=ad_id)
+        params = {"location": location}
+        return await self.request("PUT", endpoint, ad_data, params)
     
     async def delete_ad(self, ad_id: str) -> Tuple[bool, Any]:
         """Delete ad"""
-        endpoint = self.routes["ads"]["detail"].format(id=ad_id)
+        endpoint = self.routes["ads"]["delete"].format(id=ad_id)
         return await self.request("DELETE", endpoint)
+    
+    async def generate_ai_image(self, prompt_data: Dict) -> Tuple[bool, Any]:
+        """Generate AI image using OpenAI DALL-E directly"""
+        print(f"Making AI image generation request")
+        print(f"Request data: {prompt_data}")
+        
+        try:
+            # Import the quick AI service
+            from quick_ai_fix import quick_ai
+            
+            # Extract parameters
+            prompt = prompt_data.get('prompt', '')
+            style = prompt_data.get('style', 'photorealistic')
+            size = prompt_data.get('size', '1024x1024')
+            quality = prompt_data.get('quality', 'standard')
+            
+            # Call the AI service directly
+            success, result = quick_ai.generate_image(prompt, style, size, quality)
+            
+            if success:
+                print(f"✅ AI Image generation successful")
+                return True, result
+            else:
+                print(f"❌ AI Image generation failed: {result}")
+                return False, result
+                
+        except Exception as e:
+            error_msg = f"AI Image generation error: {str(e)}"
+            print(f"❌ {error_msg}")
+            return False, error_msg
+    
+    async def generate_ai_text(self, text_data: Dict) -> Tuple[bool, Any]:
+        """Generate AI text using OpenAI GPT-4o-mini directly"""
+        print(f"Making AI text generation request")
+        print(f"Request data: {text_data}")
+        
+        try:
+            # Import the quick AI service
+            from quick_ai_fix import quick_ai
+            
+            # Extract parameters
+            prompt = text_data.get('prompt', '')
+            content_type = text_data.get('content_type', 'general')
+            tone = text_data.get('tone', 'professional')
+            length = text_data.get('length', 'medium')
+            
+            # Call the AI service directly
+            success, result = quick_ai.generate_text(prompt, content_type, tone, length)
+            
+            if success:
+                print(f"✅ AI Text generation successful")
+                return True, result
+            else:
+                print(f"❌ AI Text generation failed: {result}")
+                return False, result
+                
+        except Exception as e:
+            error_msg = f"AI Text generation error: {str(e)}"
+            print(f"❌ {error_msg}")
+            return False, error_msg
 
 # Global API client instance
 api_client = APIClient()

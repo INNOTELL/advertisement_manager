@@ -109,10 +109,12 @@ from pages.cart import show_cart_page
 from pages.delivery import show_delivery_page
 from pages.sell import show_sell_page
 from pages.track import show_track_page
+from pages.ai_generator import show_ai_generator_page
+from pages.ai_text_generator import show_ai_text_generator_page
 
 @ui.page('/')
 def index():
-    # Initialize authentication and API discovery on first load
+    # Initialize authentication and API discovery on every page load
     ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
     
     show_header(auth_state, logout_user)
@@ -264,6 +266,24 @@ def sell_page():
 def track_page():
     show_header(auth_state, logout_user)
     show_track_page(auth_state)
+    show_footer()
+
+@ui.page('/ai_generator')
+def ai_generator_page():
+    # Initialize authentication and API discovery on every page load
+    ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
+    
+    show_header(auth_state, logout_user)
+    show_ai_generator_page()
+    show_footer()
+
+@ui.page('/ai_text_generator')
+def ai_text_generator_page():
+    # Initialize authentication and API discovery on every page load
+    ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
+    
+    show_header(auth_state, logout_user)
+    show_ai_text_generator_page()
     show_footer()
 
 if __name__ in {'__main__', '__mp_main__'}:

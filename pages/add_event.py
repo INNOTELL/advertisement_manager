@@ -1,9 +1,11 @@
 ﻿from nicegui import ui
 import requests
+import asyncio
 from urllib.parse import quote
 
 # Backend API base URL
 from utils.api import base_url
+from utils.api_client import api_client
 
 
 def show_add_event_page():
@@ -38,6 +40,31 @@ def show_add_event_page():
                                 ui.image(f'data:image/jpeg;base64,{image_base64}').classes('w-full h-48 object-cover rounded-lg')
                                 ui.label('Image ready for upload').classes('text-xs text-green-600 mt-2')
 
+                # Image Upload Section - At the Top
+                with ui.element('div').classes('mb-8'):
+                    ui.label('Advert Image').classes('text-xl font-semibold text-gray-800 mb-4')
+                    
+                    # Image Preview Area
+                    image_preview = ui.element('div').classes('mb-4')
+                    
+                    # Image Upload Area
+                    with ui.element('div').classes('border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-orange-500 transition-colors bg-white'):
+                        ui.icon('cloud_upload').classes('text-4xl text-gray-400 mb-4')
+                        ui.label('Upload Advert Image *').classes('text-lg font-medium text-gray-700 mb-2')
+                        ui.label('Drag and drop or click to browse').classes('text-sm text-gray-500 mb-4')
+                        ui.upload(on_upload=handle_image_upload).props('flat bordered').classes('w-full')
+                        ui.label('Supported formats: JPG, PNG, GIF (Max 5MB)').classes('text-xs text-gray-400 mt-2')
+                        ui.label('Image is required to create an advert').classes('text-xs text-red-500 mt-2 font-medium')
+                    
+                    # Image Upload Tips
+                    with ui.card().classes('p-4 bg-blue-50 border border-blue-200 mt-4'):
+                        ui.label('Image Tips').classes('text-sm font-semibold text-blue-800 mb-2')
+                        with ui.element('div').classes('text-xs text-blue-700 space-y-1'):
+                            ui.label('• Use high-quality images (at least 800x800px)')
+                            ui.label('• Show the product from multiple angles')
+                            ui.label('• Use good lighting and clear backgrounds')
+                            ui.label('• Images help increase sales by up to 30%')
+
                 # Two-column responsive form
                 with ui.element('div').classes('grid grid-cols-1 lg:grid-cols-2 gap-8'):
                     # Left column - Basic Info
@@ -66,30 +93,25 @@ def show_add_event_page():
                         description = ui.textarea('Advert Description *').classes('w-full').props('outlined rows=6')
                         description.props('placeholder=Describe your product or service in detail...')
 
-                    # Right column - Image Upload
+                    # Right column - Additional Details
                     with ui.element('div').classes('space-y-6'):
-                        ui.label('Advert Images').classes('text-xl font-semibold text-gray-800 mb-4')
+                        ui.label('Additional Details').classes('text-xl font-semibold text-gray-800 mb-4')
                         
-                        # Image Preview Area
-                        image_preview = ui.element('div').classes('mb-4')
+                        # Contact Information
+                        contact_name = ui.input('Contact Name').classes('w-full').props('outlined')
+                        contact_name.props('placeholder=Your name for contact')
                         
-                        # Image Upload Area
-                        with ui.element('div').classes('border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-orange-500 transition-colors bg-gray-50'):
-                            ui.icon('cloud_upload').classes('text-4xl text-gray-400 mb-4')
-                            ui.label('Upload Advert Image *').classes('text-lg font-medium text-gray-700 mb-2')
-                            ui.label('Drag and drop or click to browse').classes('text-sm text-gray-500 mb-4')
-                            ui.upload(on_upload=handle_image_upload).props('flat bordered').classes('w-full')
-                            ui.label('Supported formats: JPG, PNG, GIF (Max 5MB)').classes('text-xs text-gray-400 mt-2')
-                            ui.label('Image is required to create an advert').classes('text-xs text-red-500 mt-2 font-medium')
+                        contact_phone = ui.input('Contact Phone').classes('w-full').props('outlined')
+                        contact_phone.props('placeholder=+233 XX XXX XXXX')
                         
-                        # Image Upload Tips
-                        with ui.card().classes('p-4 bg-blue-50 border border-blue-200'):
-                            ui.label('Image Tips').classes('text-sm font-semibold text-blue-800 mb-2')
-                            with ui.element('div').classes('text-xs text-blue-700 space-y-1'):
-                                ui.label('• Use high-quality images (at least 800x800px)')
-                                ui.label('• Show the product from multiple angles')
-                                ui.label('• Use good lighting and clear backgrounds')
-                                ui.label('• Images help increase sales by up to 30%')
+                        # Additional Options
+                        with ui.card().classes('p-4 bg-green-50 border border-green-200'):
+                            ui.label('Selling Tips').classes('text-sm font-semibold text-green-800 mb-2')
+                            with ui.element('div').classes('text-xs text-green-700 space-y-1'):
+                                ui.label('• Be honest about the condition of your item')
+                                ui.label('• Respond to inquiries quickly')
+                                ui.label('• Set a competitive price')
+                                ui.label('• Include all relevant details')
 
                 # AI Features Section
                 with ui.element('div').classes('mt-8 p-6 bg-orange-50 rounded-lg border border-orange-200'):
@@ -159,51 +181,69 @@ def show_add_event_page():
                             
                             async def create_advert():
                                 try:
-                                    # Prepare the API call parameters
-                                    params = {
+                                    # Use the API client for consistent authentication and error handling
+                                    
+                                    # Ensure API client is initialized
+                                    if not api_client._discovered:
+                                        await api_client.discover_endpoints()
+                                    
+                                    # Prepare request data
+                                    ad_data = {
+                                        'title': title.value,
+                                        'description': description.value,
+                                        'price': float(price.value),
                                         'category': category_select.value,
                                         'location': location_select.value
                                     }
                                     
-                                    # Prepare form data
-                                    form_data = {
-                                        'advertiser_id': 'demo_user',  # TODO: Get from auth state
-                                        'title': title.value,
-                                        'description': description.value,
-                                        'price': float(price.value),
-                                    }
+                                    # Add contact info if provided
+                                    if contact_name.value:
+                                        ad_data['contact_name'] = contact_name.value
+                                    if contact_phone.value:
+                                        ad_data['contact_phone'] = contact_phone.value
                                     
-                                    # Make the API call
+                                    # Add image if provided
                                     if image_content:
-                                        # With image
-                                        files = {'image': ('image.jpg', image_content, 'image/jpeg')}
-                                        response = await asyncio.to_thread(
-                                            requests.post, 
-                                            f"{base_url}/advert", 
-                                            params=params, 
-                                            data=form_data, 
-                                            files=files
-                                        )
-                                    else:
-                                        # Without image
-                                        response = await asyncio.to_thread(
-                                            requests.post, 
-                                            f"{base_url}/advert", 
-                                            params=params, 
-                                            data=form_data
-                                        )
+                                        # Convert image to base64 string for JSON request
+                                        import base64
+                                        image_base64 = base64.b64encode(image_content).decode('utf-8')
+                                        ad_data['image'] = image_base64
                                     
-                                    if response.status_code == 200:
-                                        ui.notify('Advert posted successfully! 🎉', type='positive')
+                                    print(f"Creating advert with data: {ad_data}")
+                                    
+                                    # Call the API client's create method
+                                    success, response = await api_client.create_ad(ad_data)
+                                    
+                                    if success:
+                                        ui.notify('Advert posted successfully!', type='positive')
                                         ui.notify('Your advert is now live and visible to buyers across Ghana!', type='info')
+                                        
+                                        # Clear form
+                                        title.value = ''
+                                        description.value = ''
+                                        price.value = ''
+                                        category_select.value = ''
+                                        location_select.value = ''
+                                        contact_name.value = ''
+                                        contact_phone.value = ''
+                                        image_content = None
+                                        image_preview.clear()
                                         
                                         # Navigate to home page to see the new advert
                                         ui.timer(1.5, lambda: ui.navigate.to('/'))
+                                        
+                                        # Trigger stats refresh on home page
+                                        ui.timer(2.0, lambda: ui.run_javascript('''
+                                            // Trigger stats refresh by dispatching a custom event
+                                            window.dispatchEvent(new CustomEvent('refreshStats'));
+                                        '''), once=True)
                                     else:
-                                        ui.notify(f'Failed to create advert: {response.status_code} - {response.text}', type='negative')
+                                        ui.notify(f'Failed to create advert: {response}', type='negative')
+                                        print(f"Create advert failed: {response}")
                                         
                                 except Exception as e:
                                     ui.notify(f'Error creating advert: {str(e)}', type='negative')
+                                    print(f"Create advert error: {e}")
                             
                             # Execute the async function
                             asyncio.create_task(create_advert())

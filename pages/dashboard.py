@@ -170,9 +170,27 @@ def show_dashboard_page(auth_state=None):
                 def adverts_table():
                     async def load_adverts():
                         try:
-                            response = await asyncio.to_thread(requests.get, f"{base_url}/adverts")
-                            data = response.json()
-                            adverts = data.get('data', [])
+                            # Use the API client for consistent authentication and error handling
+                            from utils.api_client import api_client
+                            
+                            # Ensure API client is initialized
+                            if not api_client._discovered:
+                                await api_client.discover_endpoints()
+                            
+                            # Get all adverts
+                            success, response = await api_client.get_ads()
+                            
+                            if not success:
+                                ui.notify('Failed to load adverts', type='negative')
+                                return
+                            
+                            # Handle different response formats
+                            if isinstance(response, dict):
+                                adverts = response.get("data", response.get("adverts", response.get("items", [])))
+                            elif isinstance(response, list):
+                                adverts = response
+                            else:
+                                adverts = []
                             
                             # For demo purposes, show all adverts (in real app, filter by user)
                             user_adverts = adverts
@@ -231,7 +249,7 @@ def show_dashboard_page(auth_state=None):
                                             with ui.row().classes('gap-2'):
                                                 ui.button('View', on_click=lambda a=advert: ui.navigate.to(f"/view_event?title={a.get('title', '')}&id={a.get('id', '')}")).classes('bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm')
                                                 ui.button('Edit', on_click=lambda a=advert: ui.navigate.to(f"/edit_event?title={a.get('title', '')}&id={a.get('id', '')}")).classes('bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm')
-                                                ui.button('Delete', on_click=lambda a=advert: delete_advert(a.get('title', ''))).classes('bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm')
+                                                ui.button('Delete', on_click=lambda a=advert: delete_advert(a.get('id', a.get('title', '')))).classes('bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm')
                         
                         except Exception as e:
                             ui.notify(f"Error loading adverts: {e}", type='negative')
@@ -239,16 +257,33 @@ def show_dashboard_page(auth_state=None):
                     
                     ui.timer(0.1, load_adverts, once=True)
                 
-                async def delete_advert(title: str):
-                    try:
-                        response = await asyncio.to_thread(requests.delete, f"{base_url}/adverts/{title}")
-                        if response.status_code == 200:
-                            ui.notify('Advert deleted successfully', type='positive')
-                            adverts_table.refresh()
-                        else:
-                            ui.notify('Failed to delete advert', type='negative')
-                    except Exception as e:
-                        ui.notify(f"Error deleting advert: {e}", type='negative')
+                async def delete_advert(ad_id: str):
+                    # Show confirmation dialog
+                    with ui.dialog() as dialog, ui.card():
+                        ui.label(f'Are you sure you want to delete this advert?').classes('text-lg font-semibold mb-4')
+                        ui.label('This action cannot be undone.').classes('text-gray-600 mb-6')
+                        
+                        with ui.row().classes('gap-4 justify-end'):
+                            ui.button('Cancel', on_click=dialog.close).classes('bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded')
+                            
+                            async def confirm_delete():
+                                dialog.close()
+                                try:
+                                    # Use the API client's delete method with authentication
+                                    from utils.api_client import api_client
+                                    success, response = await api_client.delete_ad(ad_id)
+                                    
+                                    if success:
+                                        ui.notify('Advert deleted successfully', type='positive')
+                                        adverts_table.refresh()
+                                    else:
+                                        ui.notify(f'Failed to delete advert: {response}', type='negative')
+                                except Exception as e:
+                                    ui.notify(f"Error deleting advert: {e}", type='negative')
+                            
+                            ui.button('Delete', on_click=confirm_delete).classes('bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded')
+                    
+                    dialog.open()
                 
                 adverts_table()
 

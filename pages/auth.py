@@ -1,5 +1,5 @@
 from nicegui import ui
-from utils.auth import signup, signin, refresh_auth_state
+from utils.auth import signup, signin
 from config import USER_ROLES
 from utils.api_client import api_client
 

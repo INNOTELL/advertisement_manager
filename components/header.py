@@ -139,6 +139,11 @@ def show_header(auth_state=None, logout_user=None):
                         ui.button(icon='notifications_none', on_click=nav_notifications).classes('text-gray-700 hover:text-purple-500 hover:bg-purple-50 p-2 rounded-full transition-all').props('flat round').tooltip('Notifications')
                         ui.button(icon='dashboard', on_click=nav_dashboard).classes('text-gray-700 hover:text-orange-500 hover:bg-orange-50 p-2 rounded-full transition-all').props('flat round').tooltip('Dashboard')
                         
+                        # AI Tools dropdown (for all authenticated users)
+                        with ui.dropdown_button('AI Tools', icon='auto_awesome').classes('bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-4 py-2 font-bold text-sm shadow-lg hover:shadow-xl transition-all rounded-lg'):
+                            ui.item('AI Image Generator', on_click=lambda: ui.navigate.to('/ai_generator'))
+                            ui.item('AI Text Generator', on_click=lambda: ui.navigate.to('/ai_text_generator'))
+                        
                         # Vendor-specific buttons
                         if auth_state.is_vendor():
                             def nav_sell():
@@ -160,15 +165,21 @@ def show_header(auth_state=None, logout_user=None):
                         
                         ui.button(icon='account_circle', on_click=nav_account).classes('text-primary hover:text-primary-dark p-2 bg-primary-light rounded-full transition-all').props('flat round').tooltip('My Account')
                         
+                        # Prominent Logout Button - Easy to see and access
+                        def handle_logout():
+                            if logout_user:
+                                logout_user()
+                            else:
+                                ui.notify('Logout function not available', type='negative')
+                        
+                        ui.button('Logout', on_click=handle_logout, icon='logout').classes('text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-2 border border-red-200 rounded-lg hover:border-red-300 font-medium transition-all').tooltip('Sign out of your account')
+                        
                         # Account dropdown (hidden, using profile icon instead)
                         with ui.dropdown_button('', icon='').classes('hidden'):
                             ui.item('My Account', on_click=lambda: ui.navigate.to('/account'))
                             ui.item('My Orders', on_click=lambda: ui.navigate.to('/orders'))
                             ui.item('Wishlist', on_click=lambda: ui.navigate.to('/wishlist'))
                             ui.item('My Adverts', on_click=lambda: ui.navigate.to('/dashboard'))
-                            ui.separator()
-                            if logout_user:
-                                ui.item('Logout', on_click=logout_user)
                     else:
                         # Guest user - show login button with icon
                         def nav_login():

@@ -59,7 +59,7 @@ def show_account_page(auth_state=None):
                         with ui.element('div'):
                             ui.label('Personal Information').classes('text-lg font-semibold text-gray-700 mb-4')
                             
-                            username_input = ui.input('Full Name').classes('w-full mb-4').props('outlined')
+                            username_input = ui.input('Username').classes('w-full mb-4').props('outlined')
                             username_input.value = auth_state.name
                             
                             email_input = ui.input('Email Address').classes('w-full mb-4').props('outlined')

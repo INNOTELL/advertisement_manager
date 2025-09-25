@@ -3,6 +3,7 @@ import requests
 import asyncio
 from urllib.parse import quote
 from utils.api import base_url
+from utils.api_client import api_client
 
 
 def show_edit_event_page():
@@ -45,6 +46,13 @@ def show_edit_event_page():
                             'Real Estate', 'Services', 'Appliances', 'Other',
                         ]
                         category_select = ui.select(categories, label='Category *').classes('w-full').props('outlined')
+                        
+                        # Location field - required by API
+                        locations = [
+                            'Greater Accra', 'Ashanti', 'Eastern', 'Northern', 
+                            'Volta', 'Western', 'Bono', 'Upper East', 'Upper West'
+                        ]
+                        location_select = ui.select(locations, label='Location *').classes('w-full').props('outlined')
                         
                         description = ui.textarea('Product Description *').classes('w-full').props('outlined rows=6')
                         description.props('placeholder=Describe your product in detail...')
@@ -109,10 +117,26 @@ def show_edit_event_page():
 
                 async def load():
                     try:
+                        # Use the API client for consistent authentication and error handling
+                        
+                        # Ensure API client is initialized
+                        if not api_client._discovered:
+                            await api_client.discover_endpoints()
+                        
                         # Get all adverts and find the specific one
-                        response = await asyncio.to_thread(requests.get, f"{base_url}/adverts")
-                        json_data = response.json()
-                        all_adverts = json_data.get("data", [])
+                        success, response = await api_client.get_ads()
+                        
+                        if not success:
+                            ui.notify('Failed to load product data', type='negative')
+                            return
+                        
+                        # Handle different response formats
+                        if isinstance(response, dict):
+                            all_adverts = response.get("data", response.get("adverts", response.get("items", [])))
+                        elif isinstance(response, list):
+                            all_adverts = response
+                        else:
+                            all_adverts = []
                         
                         # Find the specific advert
                         target_advert = None
@@ -130,6 +154,7 @@ def show_edit_event_page():
                         description.value = target_advert.get('description', '')
                         price.value = target_advert.get('price', 0)
                         category_select.value = target_advert.get('category', '')
+                        location_select.value = target_advert.get('location', 'Greater Accra')  # Default to Greater Accra
                         
                         # Show current image if available
                         current_image = target_advert.get('image', '')
@@ -148,7 +173,7 @@ def show_edit_event_page():
                         ui.notify(f'Error loading product: {e}', type='negative')
 
                 def validate() -> bool:
-                    if not title.value or not description.value or not category_select.value:
+                    if not title.value or not description.value or not category_select.value or not location_select.value:
                         ui.notify('Please fill in all required fields', type='negative')
                         return False
                     try:
@@ -164,41 +189,48 @@ def show_edit_event_page():
                     if not validate():
                         return
                     
-                    # Prepare form data
-                    data_form = {
-                        'new_title': title.value,
-                        'description': description.value,
-                        'price': float(price.value),
-                        'category': category_select.value,
-                    }
-                    
-                    # Handle image upload (optional)
-                    files = None
-                    if image_content:
-                        files = {
-                            'image': ('image', image_content, 'application/octet-stream'),
-                        }
-                    
                     try:
+                        # Use the API client for consistent authentication and error handling
+                        
+                        # Prepare request data according to API documentation
+                        update_data = {
+                            'new_title': title.value,
+                            'description': description.value,
+                            'price': float(price.value),
+                            'category': category_select.value,
+                        }
+                        
+                        # Add image if provided
+                        if image_content:
+                            # Convert image to base64 string for JSON request
+                            import base64
+                            image_base64 = base64.b64encode(image_content).decode('utf-8')
+                            update_data['image'] = image_base64
+                        
                         # Use the original title or ID for the API call
                         identifier = original_title or advert_id
-                        encoded = quote(str(identifier))
                         
-                        if files:
-                            # Update with new image
-                            r = await asyncio.to_thread(requests.put, f"{base_url}/edit_advert/{encoded}", data=data_form, files=files)
+                        print(f" Updating advert with ID: {identifier}")
+                        print(f"📤 Update data: {update_data}")
+                        print(f"📍 Location: {location_select.value}")
+                        
+                        # Call the API client's update method with location as query parameter
+                        success, response = await api_client.update_ad_with_location(
+                            str(identifier), 
+                            update_data, 
+                            location_select.value
+                        )
+                        
+                        if success:
+                            ui.notify('Product updated successfully!', type='positive')
+                            ui.navigate.to(f'/view_event?title={quote(str(title.value))}&id={advert_id or ""}')
                         else:
-                            # Update without changing image
-                            r = await asyncio.to_thread(requests.put, f"{base_url}/edit_advert/{encoded}", data=data_form)
-                        
-                        if r.status_code >= 400:
-                            ui.notify(f'Update failed: {r.text}', type='negative')
-                            return
-                        
-                        ui.notify('Product updated successfully!', type='positive')
-                        ui.navigate.to(f'/view_event?title={quote(str(title.value))}&id={advert_id or ""}')
+                            ui.notify(f'Update failed: {response}', type='negative')
+                            print(f"❌ Update failed: {response}")
+                            
                     except Exception as e:
                         ui.notify(f'Error: {e}', type='negative')
+                        print(f"❌ Update error: {e}")
 
                 ui.timer(0.05, load, once=True)
                 # Populate the actions row defined above so buttons appear side by side
