@@ -75,3 +75,4 @@ def show_vendor_signup():
                 ui.link('Back to Home', '/').classes('text-gray-600 hover:text-gray-800')
 
 
+

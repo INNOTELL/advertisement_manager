@@ -7,25 +7,29 @@ from utils.api import base_url
 from utils.auth import auth_state, logout
 
 
-@ui.page('/view_event')
 def show_view_event_page():
     q = ui.context.client.request.query_params
     title = q.get('title')
     advert_id = q.get('id')  # Also check for ID parameter
-    
+
+    content_container = ui.element('div').classes('min-h-screen bg-gray-50 w-full max-w-full')
+
     # Header is handled by main.py
-    
+
     if not title and not advert_id:
-        with ui.element('div').classes('min-h-screen w-full max-w-full px-4 py-8'):
-            with ui.card().classes('p-6 text-center max-w-2xl mx-auto'):
-                ui.icon('error').classes('text-4xl text-red-500 mb-4')
-                ui.label('Product not found').classes('text-xl font-semibold text-gray-800')
-                ui.label('The product you\'re looking for doesn\'t exist').classes('text-gray-600 mt-2')
-                ui.link('Back to Home', '/').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold no-underline mt-4')
-        # Footer is handled by main.py
+        content_container.clear()
+        with content_container:
+            with ui.element('div').classes('w-full max-w-full px-4 py-8'):
+                with ui.card().classes('p-6 text-center max-w-2xl mx-auto'):
+                    ui.icon('error').classes('text-4xl text-red-500 mb-4')
+                    ui.label('Product not found').classes('text-xl font-semibold text-gray-800')
+                    ui.label("The product you're looking for doesn't exist").classes('text-gray-600 mt-2')
+                    ui.link('Back to Home', '/').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold no-underline mt-4')
         return
 
     async def load():
+        items = []
+        all_adverts = []
         try:
             # Use the API client for consistent authentication and error handling
             from utils.api_client import api_client
@@ -66,36 +70,39 @@ def show_view_event_page():
             items = []
         
         if not items:
-            with ui.element('div').classes('min-h-screen w-full max-w-full px-4 py-8'):
-                with ui.card().classes('p-6 text-center max-w-2xl mx-auto'):
-                    ui.icon('error').classes('text-4xl text-red-500 mb-4')
-                    ui.label('Product not found').classes('text-xl font-semibold text-gray-800')
-                    ui.label('The product you\'re looking for doesn\'t exist').classes('text-gray-600 mt-2')
-                    ui.link('Back to Home', '/').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold no-underline mt-4')
-            # Footer is handled by main.py
+            content_container.clear()
+            with content_container:
+                with ui.element('div').classes('min-h-screen w-full max-w-full px-4 py-8'):
+                    with ui.card().classes('p-6 text-center max-w-2xl mx-auto'):
+                        ui.icon('error').classes('text-4xl text-red-500 mb-4')
+                        ui.label('Product not found').classes('text-xl font-semibold text-gray-800')
+                        ui.label('The product you\'re looking for doesn\'t exist').classes('text-gray-600 mt-2')
+                        ui.link('Back to Home', '/').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold no-underline mt-4')
             return
         
         data = items[0]
         
         # Enhanced product detail page with proper footer positioning
-        with ui.element('div').classes('min-h-screen bg-gray-50'):
-            with ui.element('div').classes('w-full max-w-7xl mx-auto px-4 py-4'):
-                # Back button and breadcrumb
-                with ui.element('div').classes('mb-6 flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200'):
-                    # Back button - more visible and functional
-                    def go_back():
-                        # Navigate back to dashboard
-                        ui.navigate.to('/dashboard')
-                    
-                    ui.button('Back to Products', on_click=go_back, icon='arrow_back').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300')
-                    
-                    # Breadcrumb - more visible and functional
-                    with ui.row().classes('items-center gap-2 text-sm'):
-                        ui.link('Home', '/').classes('hover:text-orange-500 no-underline text-gray-600 hover:text-orange-500 font-medium')
-                        ui.icon('chevron_right').classes('text-gray-400')
-                        ui.link(data.get('category', 'Category'), f'/?cat={data.get("category", "")}').classes('hover:text-orange-500 no-underline text-gray-600 hover:text-orange-500 font-medium')
-                        ui.icon('chevron_right').classes('text-gray-400')
-                        ui.label(data.get('title', 'Product')).classes('text-gray-800 font-semibold')
+        content_container.clear()
+        with content_container:
+            with ui.element('div').classes('min-h-screen bg-gray-50'):
+                with ui.element('div').classes('w-full max-w-7xl mx-auto px-4 py-4'):
+                    # Back button and breadcrumb
+                    with ui.element('div').classes('mb-6 flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200'):
+                        # Back button - more visible and functional
+                        def go_back():
+                            # Navigate back to dashboard
+                            ui.navigate.to('/dashboard')
+                        
+                        ui.button('Back to Products', on_click=go_back, icon='arrow_back').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300')
+                        
+                        # Breadcrumb - more visible and functional
+                        with ui.row().classes('items-center gap-2 text-sm'):
+                            ui.link('Home', '/').classes('hover:text-orange-500 no-underline text-gray-600 hover:text-orange-500 font-medium')
+                            ui.icon('chevron_right').classes('text-gray-400')
+                            ui.link(data.get('category', 'Category'), f'/?cat={data.get("category", "")}').classes('hover:text-orange-500 no-underline text-gray-600 hover:text-orange-500 font-medium')
+                            ui.icon('chevron_right').classes('text-gray-400')
+                            ui.label(data.get('title', 'Product')).classes('text-gray-800 font-semibold')
                 
                 # Main Product Section with full width utilization
                 with ui.element('div').classes('grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6'):
@@ -332,9 +339,6 @@ def show_view_event_page():
                             # Fallback if no related products found
                             ui.label('No related products found').classes('col-span-full text-center text-gray-500 py-8')
             
-            # Add bottom spacing to properly separate content from footer
-            with ui.element('div').classes('h-24 w-full'):
-                pass
         # Footer is handled by main.py
 
     ui.timer(0.05, load, once=True)
