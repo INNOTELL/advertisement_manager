@@ -1,10 +1,7 @@
 ﻿from nicegui import ui
 import asyncio
-import requests
 import json
-import time
 from urllib.parse import quote
-from utils.api import base_url
 from utils.api_client import api_client
 
 
@@ -17,6 +14,25 @@ def show_home_page(auth_state=None):
     cat = q_params.get('cat') or ''
     scroll_to = q_params.get('scroll') or ''
     instant_scroll = q_params.get('instant') == 'true'
+
+    ui.run_javascript("""
+        if (!window.__advertsChangedBridge) {
+            window.__advertsChangedBridge = true;
+            window.addEventListener('adverts:changed', (event) => {
+                const detail = event.detail || {};
+                if (window.nicegui && window.nicegui.emit) {
+                    window.nicegui.emit('adverts_changed', detail);
+                }
+            });
+        }
+    """)
+
+    def handle_adverts_changed(event):
+        detail = getattr(event, 'args', {}) or {}
+        if detail.get('type') in {'created', 'updated', 'deleted', None}:
+            ui.navigate.reload()
+
+    ui.on('adverts_changed', handle_adverts_changed)
 
     # Jumia-style homepage layout
     with ui.element("div").classes("min-h-screen bg-white overflow-x-hidden w-full max-w-full pb-20 md:pb-0"):

@@ -1,9 +1,9 @@
-﻿from nicegui import ui
-import requests
-import asyncio
+import json
+
+from nicegui import ui
 from urllib.parse import quote
-from utils.api import base_url
 from utils.api_client import api_client
+from config import CATEGORIES, LOCATIONS
 
 
 def show_edit_event_page():
@@ -41,18 +41,9 @@ def show_edit_event_page():
                         price = ui.number('Price (GHS) *').classes('w-full').props('outlined')
                         price.props('placeholder=0.00')
                         
-                        categories = [
-                            'Electronics', 'Fashion', 'Furniture', 'Vehicles',
-                            'Real Estate', 'Services', 'Appliances', 'Other',
-                        ]
-                        category_select = ui.select(categories, label='Category *').classes('w-full').props('outlined')
-                        
-                        # Location field - required by API
-                        locations = [
-                            'Greater Accra', 'Ashanti', 'Eastern', 'Northern', 
-                            'Volta', 'Western', 'Bono', 'Upper East', 'Upper West'
-                        ]
-                        location_select = ui.select(locations, label='Location *').classes('w-full').props('outlined')
+                        category_select = ui.select(CATEGORIES, value=None, label='Category *').classes('w-full').props('outlined')
+
+                        location_select = ui.select(LOCATIONS, value=LOCATIONS[0], label='Location *').classes('w-full').props('outlined')
                         
                         description = ui.textarea('Product Description *').classes('w-full').props('outlined rows=6')
                         description.props('placeholder=Describe your product in detail...')
@@ -153,8 +144,13 @@ def show_edit_event_page():
                         title.value = target_advert.get('title', '')
                         description.value = target_advert.get('description', '')
                         price.value = target_advert.get('price', 0)
-                        category_select.value = target_advert.get('category', '')
-                        location_select.value = target_advert.get('location', 'Greater Accra')  # Default to Greater Accra
+                        category_value = target_advert.get('category')
+                        category_select.value = category_value if category_value in CATEGORIES else None
+
+                        location_value = target_advert.get('location') or LOCATIONS[0]
+                        if location_value not in LOCATIONS:
+                            location_value = LOCATIONS[0]
+                        location_select.value = location_value
                         
                         # Show current image if available
                         current_image = target_advert.get('image', '')
@@ -185,58 +181,67 @@ def show_edit_event_page():
                         return False
                     return True
 
+                save_button_ref = {}
                 async def save():
                     if not validate():
                         return
-                    
+
+                    btn = save_button_ref.get('button')
+                    if btn:
+                        btn.disable()
+                        btn.props('loading')
                     try:
-                        # Use the API client for consistent authentication and error handling
-                        
-                        # Prepare request data according to API documentation
+                        if not api_client._discovered:
+                            await api_client.discover_endpoints()
+
                         update_data = {
                             'new_title': title.value,
                             'description': description.value,
                             'price': float(price.value),
-                            'category': category_select.value,
+                            'category': category_select.value
                         }
-                        
-                        # Add image if provided
+
                         if image_content:
-                            # Convert image to base64 string for JSON request
-                            import base64
-                            image_base64 = base64.b64encode(image_content).decode('utf-8')
-                            update_data['image'] = image_base64
-                        
-                        # Use the original title or ID for the API call
-                        identifier = original_title or advert_id
-                        
+                            update_data['image'] = image_content
+
+                        identifier = advert_id or original_title
+
                         print(f" Updating advert with ID: {identifier}")
-                        print(f"📤 Update data: {update_data}")
-                        print(f"📍 Location: {location_select.value}")
-                        
-                        # Call the API client's update method with location as query parameter
+                        print(f"⚙️ Update data: {update_data}")
+                        print(f"⚙️ Location: {location_select.value}")
+
                         success, response = await api_client.update_ad_with_location(
-                            str(identifier), 
-                            update_data, 
+                            str(identifier),
+                            update_data,
                             location_select.value
                         )
-                        
+
                         if success:
                             ui.notify('Product updated successfully!', type='positive')
+                            payload = json.dumps({'type': 'updated', 'id': str(identifier)})
+                            ui.timer(
+                                0.2,
+                                lambda payload=payload: ui.run_javascript(
+                                    f"window.dispatchEvent(new CustomEvent('adverts:changed',{{detail:{payload}}}));"
+                                ),
+                                once=True,
+                            )
                             ui.navigate.to(f'/view_event?title={quote(str(title.value))}&id={advert_id or ""}')
                         else:
                             ui.notify(f'Update failed: {response}', type='negative')
                             print(f"❌ Update failed: {response}")
-                            
                     except Exception as e:
                         ui.notify(f'Error: {e}', type='negative')
                         print(f"❌ Update error: {e}")
-
+                    finally:
+                        if btn:
+                            btn.enable()
+                            btn.props(remove='loading')
                 ui.timer(0.05, load, once=True)
                 # Populate the actions row defined above so buttons appear side by side
                 with action_row:
                     def go_cancel():
                         ui.navigate.to(f'/view_event?title={quote(str(original_title))}')
                     ui.button('Cancel', on_click=go_cancel).classes('bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold')
-                    ui.button('Save Changes', on_click=save, icon='save').classes('bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold')
+                    save_button_ref['button'] = ui.button('Save Changes', on_click=save, icon='save').classes('bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold')
 

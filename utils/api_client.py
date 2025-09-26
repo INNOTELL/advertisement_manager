@@ -156,6 +156,31 @@ class APIClient:
             print(f"⚠️ Could not access localStorage - not in UI context: {e}")
             pass  # Ignore if not in UI context
     
+    def _prepare_image_file(self, image_data: Any):
+        """Convert various image payloads into a tuple suitable for requests' files argument."""
+        if not image_data:
+            return None
+        try:
+            import base64
+            import io
+
+            if isinstance(image_data, bytes):
+                image_bytes = image_data
+            elif isinstance(image_data, str):
+                if image_data.startswith('data:image'):
+                    header, encoded = image_data.split(',', 1)
+                    image_bytes = base64.b64decode(encoded)
+                else:
+                    image_bytes = base64.b64decode(image_data)
+            else:
+                return None
+
+            image_file = io.BytesIO(image_bytes)
+            return ("image.jpg", image_file, "image/jpeg")
+        except Exception as err:
+            print(f"⚠️ Could not prepare image file: {err}")
+            return None
+
     def get_headers(self) -> Dict[str, str]:
         """Get request headers with auth token"""
         headers = {
@@ -192,18 +217,13 @@ class APIClient:
             print(f"📥 Response headers: {dict(response.headers)}")
             
             # Handle authentication errors
-            if response.status_code in [401, 403]:
+            if response.status_code == 401:
                 self.clear_token()
-                # Only show UI notifications if we're in a UI context
                 try:
-                    if response.status_code == 401:
-                        ui.notify("Session expired, please sign in again", type="negative")
-                    else:
-                        ui.notify("Access denied. Please check your permissions.", type="negative")
+                    ui.notify("Session expired, please sign in again", type="negative")
                     ui.navigate.to(f"/login?next={ui.context.client.request.path}")
                 except (RuntimeError, AttributeError):
-                    # We're in a background task, just log the error
-                    print("⚠️ Authentication error - not in UI context")
+                    print("Authentication error - not in UI context")
                 return False, None
             
             # Handle other errors
@@ -276,7 +296,16 @@ class APIClient:
             print(f"📥 Response: {response.text}")
             
             if response.status_code == 200:
-                result = response.json()
+                raw_body = response.text
+                try:
+                    result = response.json()
+                except (ValueError, json.JSONDecodeError):
+                    result = {}
+
+                if not result:
+                    cleaned = (raw_body or "").strip()
+                    if cleaned:
+                        result = {'message': cleaned}
                 print(f"✅ Success response: {result}")
                 return True, result
             else:
@@ -286,6 +315,10 @@ class APIClient:
                     error_msg = error_data.get("detail", error_data.get("message", error_msg))
                 except:
                     error_msg = response.text or error_msg
+
+                if response.status_code == 403 and (not error_msg or error_msg == "Request failed"):
+
+                    error_msg = "Access denied. Please ensure you have vendor permissions to manage adverts."
                 
                 print(f"❌ Error response: {error_msg}")
                 return False, error_msg
@@ -322,17 +355,30 @@ class APIClient:
             print(f"📥 Response: {response.text}")
             
             if response.status_code == 200:
-                result = response.json()
+                raw_body = response.text
+                try:
+                    result = response.json()
+                except (ValueError, json.JSONDecodeError):
+                    result = {}
+
+                if not isinstance(result, dict):
+                    result = {}
+
+                if not result:
+                    cleaned = (raw_body or "").strip()
+                    if cleaned:
+                        result = {'message': cleaned}
+                        if cleaned.count('.') >= 2 or len(cleaned) > 20:
+                            result['access_token'] = cleaned
                 print(f"✅ Success response: {result}")
-                
-                # Extract and set token
+
                 token = result.get('access_token') or result.get('token')
                 if token:
-                    self.set_token(token)
+                    self.set_token(str(token))
                     print(f"✅ Token set successfully")
                 else:
                     print(f"⚠️ No token found in response")
-                
+
                 return True, result
             else:
                 error_msg = "Request failed"
@@ -341,6 +387,10 @@ class APIClient:
                     error_msg = error_data.get("detail", error_data.get("message", error_msg))
                 except:
                     error_msg = response.text or error_msg
+
+                if response.status_code == 403 and (not error_msg or error_msg == "Request failed"):
+
+                    error_msg = "Access denied. Please ensure you have vendor permissions to manage adverts."
                 
                 print(f"❌ Error response: {error_msg}")
                 return False, error_msg
@@ -361,66 +411,38 @@ class APIClient:
         return await self.request("GET", endpoint, params=params)
     
     async def create_ad(self, ad_data: Dict) -> Tuple[bool, Any]:
-        """Create new ad"""
+        """Create new ad using multipart/form-data as required by backend."""
         endpoint = self.routes["ads"]["create"]
-        
-        # Backend expects category and location as query params (from CategoryEnum and LocationEnum)
+
         params = {
-            "category": ad_data.get("category"),  # Must be from CategoryEnum
-            "location": ad_data.get("location")   # Must be from LocationEnum
+            "category": ad_data.get("category"),
+            "location": ad_data.get("location")
         }
-        
-        # Backend expects multipart/form-data, not JSON
+
         try:
             url = f"{self.base_url}{endpoint}"
             headers = {
                 "Accept": "application/json",
                 "Authorization": f"Bearer {self.token}" if self.token else ""
             }
-            
-            print(f"🌐 HTTP POST {url}")
-            print(f"📋 Headers: {headers}")
-            print(f"📤 Params: {params}")
-            
-            # Prepare form data (matching backend Body_new_advert_advert_post schema)
+
+            print(f"⚙️ HTTP POST {url}")
+            print(f"⚙️ Params: {params}")
+
             form_data = {
-                "title": ad_data.get("title"),        # Required string
-                "description": ad_data.get("description"),  # Required string
-                "price": str(ad_data.get("price", 0))  # Required number
+                "title": ad_data.get("title"),
+                "description": ad_data.get("description"),
+                "price": str(ad_data.get("price", 0))
             }
-            
-            # Add optional fields
-            if "contact_name" in ad_data:
-                form_data["contact_name"] = ad_data["contact_name"]
-            if "contact_phone" in ad_data:
-                form_data["contact_phone"] = ad_data["contact_phone"]
-            
-            print(f"📤 Form data: {form_data}")
-            
-            # Handle image if provided
-            files = None
-            if "image" in ad_data and ad_data["image"]:
-                # If image is base64, we need to convert it to a file-like object
-                import base64
-                import io
-                
-                image_data = ad_data["image"]
-                if isinstance(image_data, str) and image_data.startswith('data:image'):
-                    # Extract base64 data from data URL
-                    header, encoded = image_data.split(',', 1)
-                    image_bytes = base64.b64decode(encoded)
-                elif isinstance(image_data, str):
-                    # Assume it's base64 string
-                    image_bytes = base64.b64decode(image_data)
-                else:
-                    # Assume it's already bytes
-                    image_bytes = image_data
-                
-                # Create file-like object
-                image_file = io.BytesIO(image_bytes)
-                files = {"image": ("image.jpg", image_file, "image/jpeg")}
-                print(f"📤 Image file prepared: {len(image_bytes)} bytes")
-            
+            form_data = {k: v for k, v in form_data.items() if v not in (None, '')}
+
+            for optional_key in ("contact_name", "contact_phone"):
+                if ad_data.get(optional_key):
+                    form_data[optional_key] = ad_data[optional_key]
+
+            image_tuple = self._prepare_image_file(ad_data.get("image"))
+            files = {"image": image_tuple} if image_tuple else None
+
             response = await asyncio.to_thread(
                 requests.post,
                 url=url,
@@ -430,160 +452,233 @@ class APIClient:
                 headers=headers,
                 timeout=30
             )
-            
-            print(f"📡 Response status: {response.status_code}")
-            print(f"📥 Response headers: {dict(response.headers)}")
-            
-            # Handle authentication errors
-            if response.status_code in [401, 403]:
+
+            print(f"📨 Response status: {response.status_code}")
+            print(f"📨 Response headers: {dict(response.headers)}")
+
+            if response.status_code == 401:
                 self.clear_token()
                 try:
                     ui.notify("Session expired, please sign in again", type="negative")
                     ui.navigate.to(f"/login?next={ui.context.client.request.path}")
                 except (RuntimeError, AttributeError):
-                    print("⚠️ Authentication error - not in UI context")
+                    print("Authentication error - not in UI context")
                 return False, None
-            
-            # Handle other errors
+
             if response.status_code >= 400:
                 error_msg = "Request failed"
                 try:
                     error_data = response.json()
                     error_msg = error_data.get("detail", error_data.get("message", error_msg))
-                    print(f"❌ Error response: {error_data}")
-                except:
+                    print(f"[api] Error response: {error_data}")
+                except Exception:
                     error_msg = response.text or error_msg
-                    print(f"❌ Error text: {error_msg}")
-                
+                    print(f"[api] Error text: {error_msg}")
+
+                if response.status_code == 403 and (not error_msg or error_msg == "Request failed"):
+                    error_msg = "Access denied. Please ensure you have vendor permissions to manage adverts."
+
                 try:
                     ui.notify(f"Error: {error_msg}", type="negative")
                 except (RuntimeError, AttributeError):
-                    print(f"⚠️ Error notification - not in UI context")
+                    print("Error notification - not in UI context")
                 return False, error_msg
-            
-            # Success
+
             try:
                 result = response.json()
                 print(f"✅ Success response: {result}")
                 return True, result
-            except:
+            except Exception:
                 result = response.text
                 print(f"✅ Success text: {result}")
                 return True, result
-                
-        except Exception as e:
-            print(f"❌ Request exception: {e}")
+
+        except Exception as exc:
+            print(f"❌ Request exception: {exc}")
             try:
-                ui.notify(f"Network error: {str(e)}", type="negative")
+                ui.notify(f"Network error: {str(exc)}", type="negative")
             except (RuntimeError, AttributeError):
-                print(f"⚠️ Network error - not in UI context: {e}")
-            return False, str(e)
-    
-    async def get_ad(self, ad_id: str) -> Tuple[bool, Any]:
-        """Get ad details"""
-        endpoint = self.routes["ads"]["detail"].format(id=ad_id)
-        return await self.request("GET", endpoint)
-    
-    async def update_ad(self, ad_id: str, ad_data: Dict) -> Tuple[bool, Any]:
-        """Update ad"""
+                print(f"⚠️ Network error - not in UI context: {exc}")
+            return False, str(exc)
+
+    async def update_ad_multipart(self, ad_id: str, ad_data: Dict, category: Optional[str] = None, location: Optional[str] = None) -> Tuple[bool, Any]:
+        """Update an advert using multipart/form-data as required by the backend."""
         endpoint = self.routes["ads"]["update"].format(id=ad_id)
-        return await self.request("PUT", endpoint, ad_data)
-    
-    async def update_ad_with_location(self, ad_id: str, ad_data: Dict, location: str) -> Tuple[bool, Any]:
-        """Update ad with location as query parameter"""
-        endpoint = self.routes["ads"]["update"].format(id=ad_id)
-        params = {"location": location}
-        return await self.request("PUT", endpoint, ad_data, params)
-    
-    async def delete_ad(self, ad_id: str) -> Tuple[bool, Any]:
-        """Delete ad"""
-        endpoint = self.routes["ads"]["delete"].format(id=ad_id)
-        return await self.request("DELETE", endpoint)
-    
-    async def generate_ai_image(self, prompt_data: Dict) -> Tuple[bool, Any]:
-        """Generate AI image using backend API"""
-        endpoint = self.routes.get("ai", {}).get("generate_image", "/ai/generate-image")
-        return await self.request("POST", endpoint, prompt_data)
-    
-    async def generate_ai_text(self, text_data: Dict) -> Tuple[bool, Any]:
-        """Generate AI text using backend API"""
-        endpoint = self.routes.get("ai", {}).get("text_generation", "/ai/generate-text")
-        return await self.request("POST", endpoint, text_data)
-    
-    # Cart Management
-    async def add_to_cart(self, advert_id: str, quantity: int = 1) -> Tuple[bool, Any]:
-        """Add item to cart"""
-        endpoint = self.routes["cart"]["add"]
-        params = {
-            "advert_id": advert_id,
-            "quantity": quantity
-        }
-        return await self.request("POST", endpoint, params=params)
-    
-    # Wishlist Management  
-    async def add_to_wishlist(self, advert_id: str) -> Tuple[bool, Any]:
-        """Add item to wishlist"""
-        endpoint = self.routes["wishlist"]["add"]
-        params = {
-            "advert_id": advert_id
-        }
-        return await self.request("POST", endpoint, params=params)
-    
-    # Search and Filter
-    async def search_ads(self, keyword: str, category: str = None, location: str = None, 
-                        min_price: float = None, max_price: float = None) -> Tuple[bool, Any]:
-        """Search adverts with filters"""
-        endpoint = self.routes["ads"]["search"]
-        params = {
-            "keyword": keyword
-        }
+        params: Dict[str, Any] = {}
         if category:
-            params["category"] = category
+            params['category'] = category
         if location:
-            params["location"] = location
-        if min_price is not None:
-            params["min_price"] = min_price
-        if max_price is not None:
-            params["max_price"] = max_price
-        return await self.request("GET", endpoint, params=params)
-    
-    # Get nearby adverts
-    async def get_nearby_ads(self, user_location: str) -> Tuple[bool, Any]:
-        """Get adverts near a specific location"""
-        endpoint = self.routes["ads"]["nearby"].format(user_location=user_location)
-        return await self.request("GET", endpoint)
-    
-    # Get recommendations
-    async def get_recommendations(self, category: str) -> Tuple[bool, Any]:
-        """Get advert recommendations by category"""
-        endpoint = self.routes["ads"]["recommendations"]
-        params = {
-            "category": category
+            params['location'] = location
+
+        payload = dict(ad_data or {})
+        form_data = {
+            'new_title': payload.get('new_title') or payload.get('title'),
+            'description': payload.get('description'),
+            'price': str(payload.get('price', 0))
         }
-        return await self.request("GET", endpoint, params=params)
-    
-    # Report advert
+        form_data = {k: v for k, v in form_data.items() if v not in (None, '')}
+
+        for optional_key in ('contact_name', 'contact_phone'):
+            if payload.get(optional_key):
+                form_data[optional_key] = payload[optional_key]
+
+        image_tuple = self._prepare_image_file(payload.get('image'))
+        files = {"image": image_tuple} if image_tuple else None
+
+        try:
+            url = f"{self.base_url}{endpoint}"
+            headers = {
+                "Accept": "application/json",
+                "Authorization": f"Bearer {self.token}" if self.token else ""
+            }
+
+            print(f"⚙️ HTTP PUT {url}")
+            print(f"⚙️ Params: {params}")
+            print(f"⚙️ Form data: {form_data}")
+
+            response = await asyncio.to_thread(
+                requests.put,
+                url=url,
+                data=form_data,
+                files=files,
+                params=params,
+                headers=headers,
+                timeout=30
+            )
+
+            print(f"📨 Response status: {response.status_code}")
+            print(f"📨 Response headers: {dict(response.headers)}")
+
+            if response.status_code == 401:
+                self.clear_token()
+                try:
+                    ui.notify("Session expired, please sign in again", type="negative")
+                    ui.navigate.to(f"/login?next={ui.context.client.request.path}")
+                except (RuntimeError, AttributeError):
+                    print("Authentication error - not in UI context")
+                return False, None
+
+            if response.status_code >= 400:
+                error_msg = "Request failed"
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get("detail", error_data.get("message", error_msg))
+                    print(f"[api] Error response: {error_data}")
+                except Exception:
+                    error_msg = response.text or error_msg
+                    print(f"[api] Error text: {error_msg}")
+
+                if response.status_code == 403 and (not error_msg or error_msg == "Request failed"):
+                    error_msg = "Access denied. Please ensure you have vendor permissions to manage adverts."
+
+                try:
+                    ui.notify(f"Error: {error_msg}", type="negative")
+                except (RuntimeError, AttributeError):
+                    print("Error notification - not in UI context")
+                return False, error_msg
+
+            try:
+                result = response.json()
+                print(f"✅ Update success: {result}")
+                return True, result
+            except Exception:
+                result = response.text
+                print(f"✅ Update success (text): {result}")
+                return True, result
+
+        except Exception as exc:
+            print(f"❌ Update exception: {exc}")
+            try:
+                ui.notify(f"Network error: {str(exc)}", type="negative")
+            except (RuntimeError, AttributeError):
+                print(f"⚠️ Network error - not in UI context: {exc}")
+            return False, str(exc)
+
+    async def get_ad(self, ad_id: str) -> Tuple[bool, Any]:
+        """Get advert details by identifier"""
+        endpoint = self.routes['ads']['detail'].format(id=ad_id)
+        return await self.request('GET', endpoint)
+
+    async def update_ad(self, ad_id: str, ad_data: Dict) -> Tuple[bool, Any]:
+        """Update advert without additional query parameters"""
+        return await self.update_ad_multipart(ad_id, ad_data)
+
+    async def update_ad_with_location(self, ad_id: str, ad_data: Dict, location: str) -> Tuple[bool, Any]:
+        """Update advert with location and optional category hints"""
+        category = ad_data.get('category')
+        return await self.update_ad_multipart(ad_id, ad_data, category=category, location=location)
+
+    async def delete_ad(self, ad_id: str) -> Tuple[bool, Any]:
+        """Delete advert by identifier"""
+        endpoint = self.routes['ads']['delete'].format(id=ad_id)
+        return await self.request('DELETE', endpoint)
+
+    async def generate_ai_image(self, prompt_data: Dict) -> Tuple[bool, Any]:
+        """Generate AI image using backend proxy"""
+        endpoint = self.routes.get('ai', {}).get('generate_image', '/ai/generate-image')
+        return await self.request('POST', endpoint, prompt_data)
+
+    async def generate_ai_text(self, text_data: Dict) -> Tuple[bool, Any]:
+        """Generate AI text using backend proxy"""
+        endpoint = self.routes.get('ai', {}).get('text_generation', '/ai/generate-text')
+        return await self.request('POST', endpoint, text_data)
+
+    async def add_to_cart(self, advert_id: str, quantity: int = 1) -> Tuple[bool, Any]:
+        """Add advert to cart"""
+        endpoint = self.routes['cart']['add']
+        params = {'advert_id': advert_id, 'quantity': quantity}
+        return await self.request('POST', endpoint, params=params)
+
+    async def add_to_wishlist(self, advert_id: str) -> Tuple[bool, Any]:
+        """Add advert to wishlist"""
+        endpoint = self.routes['wishlist']['add']
+        params = {'advert_id': advert_id}
+        return await self.request('POST', endpoint, params=params)
+
+    async def search_ads(self, keyword: str, category: Optional[str] = None, location: Optional[str] = None,
+                         min_price: Optional[float] = None, max_price: Optional[float] = None) -> Tuple[bool, Any]:
+        """Search adverts with optional filters"""
+        endpoint = self.routes['ads']['search']
+        params: Dict[str, Any] = {'keyword': keyword}
+        if category:
+            params['category'] = category
+        if location:
+            params['location'] = location
+        if min_price is not None:
+            params['min_price'] = min_price
+        if max_price is not None:
+            params['max_price'] = max_price
+        return await self.request('GET', endpoint, params=params)
+
+    async def get_nearby_ads(self, user_location: str) -> Tuple[bool, Any]:
+        """Fetch adverts near a specific location"""
+        endpoint = self.routes['ads']['nearby'].format(user_location=user_location)
+        return await self.request('GET', endpoint)
+
+    async def get_recommendations(self, category: str) -> Tuple[bool, Any]:
+        """Get recommendations for a category"""
+        endpoint = self.routes['ads']['recommendations']
+        params = {'category': category}
+        return await self.request('GET', endpoint, params=params)
+
     async def report_advert(self, advert_id: str, reason: str) -> Tuple[bool, Any]:
         """Report an inappropriate advert"""
-        endpoint = self.routes["report"]["advert"].format(id=advert_id)
-        data = {
-            "reason": reason
-        }
-        return await self.request("POST", endpoint, data)
-    
+        endpoint = self.routes['report']['advert'].format(id=advert_id)
+        data = {'reason': reason}
+        return await self.request('POST', endpoint, data)
+
     def check_ai_readiness(self) -> str:
-        """Check AI API readiness and return status string"""
-        if not ai_api_key or ai_api_key == "your_ai_api_key_here":
-            return "AI API key not configured. Please set AI_API_KEY in your .env file."
-        
+        """Check AI integration readiness"""
+        if not ai_api_key or ai_api_key == 'your_ai_api_key_here':
+            return 'AI API key not configured. Please set AI_API_KEY in your .env file.'
         if not self._discovered:
-            return "API endpoints not discovered yet. Please wait for initialization."
-        
-        ai_endpoints = self.routes.get("ai", {})
+            return 'API endpoints not discovered yet. Please wait for initialization.'
+        ai_endpoints = self.routes.get('ai', {})
         if not ai_endpoints:
-            return "AI endpoints not available in API specification."
-        
-        return "AI integration ready. API key configured and endpoints available."
+            return 'AI endpoints not available in API specification.'
+        return 'AI integration ready. API key configured and endpoints available.'
 
 # Global API client instance
 api_client = APIClient()
+
+

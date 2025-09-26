@@ -4,6 +4,11 @@ from config import USER_ROLES
 from utils.api_client import api_client
 
 def show_login_page(login_user=None, auth_state=None):
+    if auth_state and auth_state.is_authenticated:
+        next_path = ui.context.client.request.query_params.get('next', '/')
+        ui.navigate.to(next_path)
+        return
+
     with ui.element('div').classes('min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 flex items-center justify-center p-4'):
         with ui.element('div').classes('w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden mx-auto flex items-center justify-center'):
             with ui.element('div').classes('grid grid-cols-1 lg:grid-cols-2 min-h-[500px]'):
@@ -46,174 +51,110 @@ def show_login_page(login_user=None, auth_state=None):
                             ui.icon('lock').classes('absolute left-3 top-4 text-gray-400')
                             password_input = ui.input('Password*').classes('w-full h-12 pl-12 pr-4 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 bg-gray-50 focus:bg-white transition-all').props('type=password')
                     
-                    def handle_login():
+
+                    login_button_ref = {}
+
+                    async def handle_login():
                         email = email_input.value.strip()
                         password = password_input.value
-                        
+
                         if not email or not password:
-                            ui.notify('Please enter both email and password', type='negative')
+                            ui.notify("Please enter both email and password", type="negative")
                             return
-                        
-                        # Basic email validation
+
                         import re
-                        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                        email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
                         if not re.match(email_pattern, email):
-                            ui.notify('Please enter a valid email address', type='negative')
+                            ui.notify("Please enter a valid email address", type="negative")
                             return
-                        
+
                         if len(password) < 8:
-                            ui.notify('Password must be at least 8 characters', type='negative')
+                            ui.notify("Password must be at least 8 characters", type="negative")
                             return
-                        
-                        # Disable login button and show spinner
-                        login_button = ui.button('Signing In...', icon='hourglass_empty').classes('w-full h-12 bg-blue-400 text-white font-semibold rounded-lg shadow-lg transition-all duration-300 text-sm sm:text-base cursor-not-allowed')
-                        login_button.props('disabled')
-                        
-                        # Show loading notification
-                        ui.notify('Logging in...', type='info')
-                        
-                        # Proper login flow with API call, auth persistence, and feedback
-                        async def handle_login_async():
-                            try:
-                                print(f"ðŸ”‘ Starting login for: {email}")
-                                
-                                # Call the API directly for better control
-                                
-                                # Ensure API discovery has run
-                                if not api_client._discovered:
-                                    await api_client.discover_endpoints()
-                                
-                                # Make the API call
-                                success, response = await api_client.signin(email, password)
-                                print(f"ðŸ“¡ API Response - Success: {success}, Response: {response}")
-                                
-                                if success and response:
-                                    # Parse the token/session payload
-                                    if isinstance(response, dict):
-                                        token = response.get("access_token") or response.get("token")
-                                        message = response.get("message", "")
-                                        
-                                        if token:
-                                            # Extract username from message
-                                            username = "User"
-                                            if "Welcome back," in message:
-                                                username = message.split("Welcome back, ")[1].split("!")[0] if "Welcome back," in message else email.split("@")[0]
-                                            
-                                            # Extract role from response or JWT token
-                                            raw_role = response.get("role")
-                                            role = normalize_role(raw_role)
-                                            if not raw_role:
-                                                try:
-                                                    import base64
-                                                    import json
-                                                    token_parts = token.split('.')
-                                                    if len(token_parts) >= 2:
-                                                        payload = token_parts[1]
-                                                        payload += '=' * (4 - len(payload) % 4)
-                                                        decoded = base64.b64decode(payload)
-                                                        token_data = json.loads(decoded)
-                                                        token_role = token_data.get('role')
-                                                        if token_role:
-                                                            role = normalize_role(token_role)
-                                                except Exception as e:
-                                                    print(f"âš ï¸ Could not decode JWT token: {e}")
-                                                    role = normalize_role(USER_ROLES['BUYER'])
-                                            
-                                            # Persist auth in per-user store
-                                            user_data = {
-                                                "id": None,
-                                                "name": username,
-                                                "email": email,
-                                                "role": role
-                                            }
-                                            
-                                            # Set auth state and token
-                                            auth_state.set_user(user_data, token)
-                                            
-                                            # Store in localStorage for persistence
-                                            import json
-                                            try:
-                                                ui.run_javascript(f'localStorage.setItem("auth_token", "{token}")')
-                                                ui.run_javascript(f'localStorage.setItem("user_data", {json.dumps(user_data)})')
-                                                ui.run_javascript('localStorage.setItem("is_authenticated", "true")')
-                                            except (RuntimeError, AttributeError):
-                                                print("âš ï¸ Could not store auth in localStorage - not in UI context")
-                                            
-                                            print(f"âœ… Auth persisted: {auth_state.is_authenticated}, user: {auth_state.name}")
-                                            
-                                            # Show success feedback
-                                            try:
-                                                ui.notify('Logged in successfully!', type='positive')
-                                            except (RuntimeError, AttributeError):
-                                                print("âœ… Logged in successfully!")
-                                            
-                                            # Clear form fields
-                                            try:
-                                                email_input.value = ''
-                                                password_input.value = ''
-                                                
-                                                # Automatic redirect to Home
-                                                ui.navigate.to('/')
-                                            except (RuntimeError, AttributeError):
-                                                print("âš ï¸ Could not clear form or navigate - not in UI context")
-                                            
-                                            # Force UI refresh to show logged-in state
-                                            try:
-                                                ui.timer(0.5, lambda: ui.navigate.reload(), once=True)
-                                            except (RuntimeError, AttributeError):
-                                                print("âš ï¸ Could not set timer - not in UI context")
-                                            
-                                            return True
-                                        else:
-                                            try:
-                                                ui.notify('Login failed: No token received', type='negative')
-                                            except (RuntimeError, AttributeError):
-                                                print("âŒ Login failed: No token received")
-                                            return False
-                                    else:
+
+                        btn = login_button_ref.get('button')
+                        if btn:
+                            btn.disable()
+                            btn.props('loading')
+
+                        try:
+                            ui.notify("Logging in...", type="info")
+
+                            if not api_client._discovered:
+                                await api_client.discover_endpoints()
+
+                            success, response = await api_client.signin(email, password)
+
+                            if success and isinstance(response, dict):
+                                token = response.get('access_token') or response.get('token')
+                                message = response.get('message', '')
+
+                                if token:
+                                    username = 'User'
+                                    if 'Welcome back,' in message:
+                                        username = message.split('Welcome back, ')[1].split('!')[0] if 'Welcome back,' in message else email.split('@')[0]
+
+                                    raw_role = response.get('role')
+                                    role = normalize_role(raw_role)
+                                    if not raw_role:
                                         try:
-                                            ui.notify('Login failed: Invalid response format', type='negative')
-                                        except (RuntimeError, AttributeError):
-                                            print("âŒ Login failed: Invalid response format")
-                                        return False
+                                            import base64
+                                            import json as json_lib
+                                            parts = token.split('.')
+                                            if len(parts) >= 2:
+                                                payload = parts[1] + '=' * (4 - len(parts[1]) % 4)
+                                                decoded = base64.b64decode(payload)
+                                                token_data = json_lib.loads(decoded)
+                                                token_role = token_data.get('role')
+                                                if token_role:
+                                                    role = normalize_role(token_role)
+                                        except Exception as exc:
+                                            print(f"Could not decode JWT token: {exc}")
+                                            role = normalize_role(USER_ROLES['BUYER'])
+
+                                    user_data = {
+                                        'id': response.get('id'),
+                                        'name': username,
+                                        'email': email,
+                                        'role': role,
+                                    }
+
+                                    auth_state.set_user(user_data, token)
+
+                                    import json
+                                    token_js = json.dumps(token)
+                                    user_data_js = json.dumps(user_data)
+                                    ui.run_javascript(f'localStorage.setItem("auth_token", {token_js})')
+                                    ui.run_javascript(f'localStorage.setItem("user_data", {user_data_js})')
+                                    ui.run_javascript('localStorage.setItem("is_authenticated", "true")')
+
+                                    ui.notify("Logged in successfully!", type="positive")
+
+                                    email_input.value = ''
+                                    password_input.value = ''
+
+                                    default_path = '/dashboard' if auth_state.is_vendor() else '/'
+                                    next_path = ui.context.client.request.query_params.get('next') or default_path
+                                    ui.navigate.to(next_path)
+                                    return
                                 else:
-                                    # Show failure feedback with details
-                                    error_msg = str(response) if response else "Unknown error"
-                                    if "does not exist" in error_msg.lower():
-                                        try:
-                                            ui.notify('Login failed: User does not exist. Please check your email or create an account.', type='negative')
-                                        except (RuntimeError, AttributeError):
-                                            print("âŒ Login failed: User does not exist. Please check your email or create an account.")
-                                    else:
-                                        try:
-                                            ui.notify(f'Login failed: {error_msg[:100]}', type='negative')
-                                        except (RuntimeError, AttributeError):
-                                            print(f"âŒ Login failed: {error_msg[:100]}")
-                                    return False
-                                
-                            except Exception as e:
-                                print(f"âŒ Login error: {e}")
-                                try:
-                                    ui.notify(f'Login failed: {str(e)[:100]}', type='negative')
-                                except (RuntimeError, AttributeError):
-                                    print(f"âŒ Login failed: {str(e)[:100]}")
-                                return False
-                            finally:
-                                # Re-enable login button
-                                try:
-                                    login_button.delete()
-                                    ui.button('Sign In', on_click=handle_login, icon='login').classes('w-full h-12 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 text-sm sm:text-base')
-                                except (RuntimeError, AttributeError):
-                                    print("âš ï¸ Could not re-enable login button - not in UI context")
-                        
-                        # Run the async task
-                        import asyncio
-                        asyncio.create_task(handle_login_async())
-                    
-                    ui.button('Sign In', on_click=handle_login, icon='login').classes('w-full h-12 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 text-sm sm:text-base')
-                    
-                    
-                    
+                                    ui.notify("Login failed: No token received", type="negative")
+                            else:
+                                error_msg = str(response) if response else 'Unknown error'
+                                if 'does not exist' in error_msg.lower():
+                                    ui.notify("Login failed: User does not exist. Please check your email or create an account.", type="negative")
+                                else:
+                                    ui.notify(f"Login failed: {error_msg[:100]}", type="negative")
+                        except Exception as exc:
+                            print(f"Login error: {exc}")
+                            ui.notify(f"Login failed: {str(exc)[:100]}", type="negative")
+                        finally:
+                            if btn:
+                                btn.enable()
+                                btn.props(remove='loading')
+
+                    login_button_ref['button'] = ui.button('Sign In', on_click=handle_login, icon='login').classes('w-full h-12 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 text-sm sm:text-base')
+
                     with ui.element('div').classes('text-center mt-4'):
                         ui.label('Don\'t have an account? ').classes('text-gray-600 text-sm')
                         ui.link('Create one here', '/signup').classes('text-blue-600 hover:text-blue-700 font-semibold text-sm no-underline')

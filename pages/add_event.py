@@ -1,11 +1,8 @@
 ﻿from nicegui import ui
-import requests
-import asyncio
-from urllib.parse import quote
 
 # Backend API base URL
-from utils.api import base_url
 from utils.api_client import api_client
+from config import CATEGORIES, LOCATIONS
 
 
 def show_add_event_page():
@@ -77,18 +74,9 @@ def show_add_event_page():
                         price = ui.number('Price (GHS) *').classes('w-full').props('outlined')
                         price.props('placeholder=0.00')
                         
-                        categories = [
-                            'Electronics', 'Fashion', 'Furniture', 'Vehicles',
-                            'Real Estate', 'Services', 'Appliances', 'Other',
-                        ]
-                        category_select = ui.select(categories, label='Category *').classes('w-full').props('outlined')
+                        category_select = ui.select(CATEGORIES, value=None, label='Category *').classes('w-full').props('outlined')
                         
-                        locations = [
-                            'Greater Accra', 'Central Region', 'Ashanti Region', 'Brong Ahafo Region',
-                            'Eastern Region', 'Northern Region', 'Upper East Region', 'Upper West Region',
-                            'Volta Region', 'Western Region'
-                        ]
-                        location_select = ui.select(locations, value='Greater Accra', label='Location *').classes('w-full').props('outlined')
+                        location_select = ui.select(LOCATIONS, value=LOCATIONS[0], label='Location *').classes('w-full').props('outlined')
                         
                         description = ui.textarea('Advert Description *').classes('w-full').props('outlined rows=6')
                         description.props('placeholder=Describe your product or service in detail...')
@@ -141,116 +129,77 @@ def show_add_event_page():
                         ui.navigate.to('/dashboard')
                     ui.button('Cancel', on_click=go_cancel).classes('bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold')
 
+                    post_button_ref = {}
                     async def create():
-                        # Validation
-                        if not title.value or not description.value or not category_select.value or not location_select.value:
-                            ui.notify('Please fill in all required fields', type='negative')
-                            return
-                        
-                        if image_content is None:
-                            ui.notify('Please upload an image - it is required to create an advert', type='negative')
-                            return
+                        nonlocal image_content
+                        btn = post_button_ref.get('button')
+                        if btn:
+                            btn.disable()
+                            btn.props('loading')
                         try:
-                            if float(price.value) <= 0:
-                                ui.notify('Price must be greater than 0', type='negative')
+                            if not title.value or not description.value or not category_select.value or not location_select.value:
+                                ui.notify('Please fill in all required fields', type='negative')
                                 return
-                        except Exception:
-                            ui.notify('Price must be a valid number', type='negative')
-                            return
-                        # Image is required by the backend
-                        if image_content is None:
-                            ui.notify('Please upload an image - it is required to create an advert', type='negative')
-                            return
 
-                        data_form = {
-                            'title': title.value,
-                            'description': description.value,
-                            'price': float(price.value),
-                            'category': category_select.value,
-                        }
-                        # Handle file upload if image exists
-                        files = None
-                        if image_content:
-                            files = {
-                                'image': ('image', image_content, 'application/octet-stream'),
+                            if image_content is None:
+                                ui.notify('Please upload an image - it is required to create an advert', type='negative')
+                                return
+
+                            try:
+                                if float(price.value) <= 0:
+                                    ui.notify('Price must be greater than 0', type='negative')
+                                    return
+                            except Exception:
+                                ui.notify('Price must be a valid number', type='negative')
+                                return
+
+                            if not api_client._discovered:
+                                await api_client.discover_endpoints()
+
+                            ad_data = {
+                                'title': title.value,
+                                'description': description.value,
+                                'price': float(price.value),
+                                'category': category_select.value,
+                                'location': location_select.value
                             }
-                        
-                        try:
-                            # Make the actual API call to create advert
-                            import asyncio
-                            
-                            async def create_advert():
-                                try:
-                                    # Use the API client for consistent authentication and error handling
-                                    
-                                    # Ensure API client is initialized
-                                    if not api_client._discovered:
-                                        await api_client.discover_endpoints()
-                                    
-                                    # Prepare request data
-                                    ad_data = {
-                                        'title': title.value,
-                                        'description': description.value,
-                                        'price': float(price.value),
-                                        'category': category_select.value,
-                                        'location': location_select.value
-                                    }
-                                    
-                                    # Add contact info if provided
-                                    if contact_name.value:
-                                        ad_data['contact_name'] = contact_name.value
-                                    if contact_phone.value:
-                                        ad_data['contact_phone'] = contact_phone.value
-                                    
-                                    # Add image if provided
-                                    if image_content:
-                                        # Convert image to base64 string for JSON request
-                                        import base64
-                                        image_base64 = base64.b64encode(image_content).decode('utf-8')
-                                        ad_data['image'] = image_base64
-                                    
-                                    print(f"Creating advert with data: {ad_data}")
-                                    
-                                    # Call the API client's create method
-                                    success, response = await api_client.create_ad(ad_data)
-                                    
-                                    if success:
-                                        ui.notify('Advert posted successfully!', type='positive')
-                                        ui.notify('Your advert is now live and visible to buyers across Ghana!', type='info')
-                                        
-                                        # Clear form
-                                        title.value = ''
-                                        description.value = ''
-                                        price.value = ''
-                                        category_select.value = ''
-                                        location_select.value = ''
-                                        contact_name.value = ''
-                                        contact_phone.value = ''
-                                        image_content = None
-                                        image_preview.clear()
-                                        
-                                        # Navigate to home page to see the new advert
-                                        ui.timer(1.5, lambda: ui.navigate.to('/'))
-                                        
-                                        # Trigger stats refresh on home page
-                                        ui.timer(2.0, lambda: ui.run_javascript('''
-                                            // Trigger stats refresh by dispatching a custom event
-                                            window.dispatchEvent(new CustomEvent('refreshStats'));
-                                        '''), once=True)
-                                    else:
-                                        ui.notify(f'Failed to create advert: {response}', type='negative')
-                                        print(f"Create advert failed: {response}")
-                                        
-                                except Exception as e:
-                                    ui.notify(f'Error creating advert: {str(e)}', type='negative')
-                                    print(f"Create advert error: {e}")
-                            
-                            # Execute the async function
-                            asyncio.create_task(create_advert())
-                            
-                        except Exception as e:
-                            ui.notify(f'Error: {e}', type='negative')
 
-                    ui.button('Post Advert', on_click=create, icon='publish').classes('bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold text-lg')
+                            if contact_name.value:
+                                ad_data['contact_name'] = contact_name.value
+                            if contact_phone.value:
+                                ad_data['contact_phone'] = contact_phone.value
+                            if image_content:
+                                ad_data['image'] = image_content
+
+                            print(f"Creating advert with data: {ad_data}")
+                            success, response = await api_client.create_ad(ad_data)
+
+                            if success:
+                                ui.notify('Advert posted successfully!', type='positive')
+                                ui.notify('Your advert is now live and visible to buyers across Ghana!', type='info')
+
+                                title.value = ''
+                                description.value = ''
+                                price.value = ''
+                                category_select.value = None
+                                location_select.value = LOCATIONS[0]
+                                contact_name.value = ''
+                                contact_phone.value = ''
+                                image_content = None
+                                image_preview.clear()
+
+                                ui.timer(1.0, lambda: ui.navigate.to('/'), once=True)
+                                ui.timer(0.2, lambda: ui.run_javascript("window.dispatchEvent(new CustomEvent('adverts:changed',{detail:{type:'created'}}));"), once=True)
+                            else:
+                                ui.notify(f'Failed to create advert: {response}', type='negative')
+                                print(f"Create advert failed: {response}")
+                        except Exception as e:
+                            ui.notify(f'Error creating advert: {str(e)}', type='negative')
+                            print(f"Create advert error: {e}")
+                        finally:
+                            if btn:
+                                btn.enable()
+                                btn.props(remove='loading')
+                    post_button_ref['button'] = ui.button('Post Advert', on_click=create, icon='publish').classes('bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold text-lg')
 
 

@@ -1,14 +1,36 @@
-from nicegui import ui
-import requests
-import asyncio
-from utils.api import base_url
-from datetime import datetime, timedelta
+import json
 
+from nicegui import ui
+from utils.api_client import api_client
 def show_dashboard_page(auth_state=None):
     if not auth_state or not auth_state.is_authenticated:
         ui.navigate.to('/login')
         return
     
+    ui.run_javascript("""
+        if (!window.__advertsChangedBridge) {
+            window.__advertsChangedBridge = true;
+            window.addEventListener('adverts:changed', (event) => {
+                const detail = event.detail || {};
+                if (window.nicegui && window.nicegui.emit) {
+                    window.nicegui.emit('adverts_changed', detail);
+                }
+            });
+        }
+    """)
+
+    adverts_state = {'items': []}
+
+    def resolve_advert_id(advert: dict) -> str:
+        if not isinstance(advert, dict):
+            return ''
+        for key in ('id', 'advert_id', '_id'):
+            value = advert.get(key)
+            if value:
+                return str(value)
+        fallback = advert.get('title') if isinstance(advert, dict) else ''
+        return str(fallback or '')
+
     with ui.element('div').classes('min-h-screen bg-white py-8'):
         with ui.element('div').classes('container mx-auto px-4 max-w-7xl'):
             # Page Header
@@ -18,23 +40,40 @@ def show_dashboard_page(auth_state=None):
                 ui.label(f'Welcome back, {auth_state.email}!').classes('text-gray-600')
             
             # Quick Stats
-            with ui.element('div').classes('grid grid-cols-1 md:grid-cols-4 gap-6 mb-8'):
-                stats = [
-                    {'title': 'Total Products', 'value': '24', 'icon': 'inventory', 'color': 'bg-blue-500', 'change': '+12%'},
-                    {'title': 'Active Listings', 'value': '18', 'icon': 'visibility', 'color': 'bg-green-500', 'change': '+5%'},
-                    {'title': 'Total Sales', 'value': 'GHS 12,450', 'icon': 'attach_money', 'color': 'bg-primary', 'change': '+23%'},
-                    {'title': 'Pending Orders', 'value': '5', 'icon': 'pending', 'color': 'bg-yellow-500', 'change': '-2%'},
+            @ui.refreshable
+            def dashboard_stats():
+                items = adverts_state.get('items') or []
+                total = len(items)
+
+                prices = []
+                for advert in items:
+                    price_value = advert.get('price')
+                    try:
+                        prices.append(float(price_value))
+                    except (TypeError, ValueError):
+                        continue
+
+                avg_price = sum(prices) / len(prices) if prices else 0
+                highest = max(prices) if prices else None
+                lowest = min(prices) if prices else None
+
+                metrics = [
+                    {'title': 'Total Listings', 'value': str(total), 'icon': 'inventory', 'color': 'bg-blue-500'},
+                    {'title': 'Average Price', 'value': f"GHS {avg_price:,.2f}" if prices else 'GHS 0.00', 'icon': 'attach_money', 'color': 'bg-green-500'},
+                    {'title': 'Highest Price', 'value': f"GHS {highest:,.2f}" if highest is not None else 'N/A', 'icon': 'trending_up', 'color': 'bg-purple-500'},
+                    {'title': 'Lowest Price', 'value': f"GHS {lowest:,.2f}" if lowest is not None else 'N/A', 'icon': 'trending_down', 'color': 'bg-orange-500'},
                 ]
-                
-                for stat in stats:
-                    with ui.card().classes('p-6 bg-gray-50 shadow-sm hover:shadow-md transition-shadow'):
-                        with ui.element('div').classes('flex items-center justify-between mb-4'):
-                            ui.icon(stat['icon']).classes(f'text-white text-2xl {stat["color"]} rounded-full p-3')
-                            ui.label(stat['change']).classes('text-sm font-medium text-green-600')
-                        with ui.element('div'):
-                            ui.label(stat['value']).classes('text-2xl font-bold text-gray-800')
-                            ui.label(stat['title']).classes('text-sm text-gray-600')
-            
+
+                with ui.element('div').classes('grid grid-cols-1 md:grid-cols-4 gap-6 mb-8'):
+                    for metric in metrics:
+                        with ui.card().classes('p-6 bg-gray-50 shadow-sm hover:shadow-md transition-shadow'):
+                            with ui.element('div').classes('flex items-center justify-between mb-4'):
+                                ui.icon(metric['icon']).classes(f"text-white text-2xl {metric['color']} rounded-full p-3")
+                                ui.label(metric['value']).classes('text-lg font-semibold text-gray-700')
+                            ui.label(metric['title']).classes('text-sm text-gray-600')
+
+            dashboard_stats()
+
             # Main Dashboard Content
             with ui.element('div').classes('grid grid-cols-1 lg:grid-cols-3 gap-8'):
                 # Left Column - Products Management
@@ -44,83 +83,114 @@ def show_dashboard_page(auth_state=None):
                         with ui.element('div').classes('flex items-center justify-between mb-6'):
                             ui.label('Recent Products').classes('text-xl font-bold text-gray-800')
                             ui.button('VIEW ALL', on_click=lambda: ui.navigate.to('/')).classes('bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-medium')
-                        
-                        # Demo products data
-                        products = [
-                            {'title': 'iPhone 14 Pro', 'price': 4500, 'status': 'Active', 'views': 1247, 'sales': 8, 'image': 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=100&h=100&fit=crop'},
-                            {'title': 'Samsung Galaxy S23', 'price': 3800, 'status': 'Active', 'views': 892, 'sales': 5, 'image': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=100&h=100&fit=crop'},
-                            {'title': 'MacBook Pro M2', 'price': 8500, 'status': 'Sold', 'views': 2156, 'sales': 3, 'image': 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=100&h=100&fit=crop'},
-                        ]
-                        
-                        with ui.element('div').classes('space-y-4'):
-                            for product in products:
-                                def make_product_click_handler(p):
-                                    def view_product():
-                                        ui.navigate.to(f"/view_event?title={p['title']}&id=demo_{p['title'].lower().replace(' ', '_')}")
-                                    return view_product
-                                
-                                with ui.element('div').classes('flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer').on('click', make_product_click_handler(product)):
-                                    ui.image(product['image']).classes('w-16 h-16 object-cover rounded-lg')
+
+                        @ui.refreshable
+                        def recent_products():
+                            items = adverts_state.get('items') or []
+                            if not items:
+                                with ui.element('div').classes('text-center py-8 text-gray-500'):
+                                    ui.icon('inventory').classes('text-4xl text-gray-300 mb-2')
+                                    ui.label('No adverts available yet.').classes('text-sm text-gray-500')
+                                return
+
+                            def to_float(value):
+                                try:
+                                    return float(value)
+                                except (TypeError, ValueError):
+                                    return None
+
+                            for advert in items[:5]:
+                                advert_id = resolve_advert_id(advert)
+                                title = advert.get('title') or advert.get('name') or 'Advert'
+                                price_value = to_float(advert.get('price'))
+                                price_text = f"GHS {price_value:,.2f}" if price_value is not None else 'Price not set'
+                                category = advert.get('category') or 'Uncategorized'
+                                location = advert.get('location') or advert.get('region') or 'Unknown location'
+
+                                def open_details(e, data=advert):
+                                    ui.navigate.to(f"/view_event?title={data.get('title', '')}&id={resolve_advert_id(data)}")
+
+                                with ui.element('div').classes('flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer').on('click', open_details):
+                                    image_data = advert.get('image') or advert.get('image_url')
+                                    with ui.element('div'):
+                                        if image_data and isinstance(image_data, str):
+                                            if image_data.startswith('http'):
+                                                ui.image(image_data).classes('w-16 h-16 object-cover rounded-lg')
+                                            elif len(image_data) > 50:
+                                                ui.image(f"data:image/jpeg;base64,{image_data}").classes('w-16 h-16 object-cover rounded-lg')
+                                            else:
+                                                ui.icon('image').classes('text-4xl text-gray-400')
+                                        else:
+                                            ui.icon('image').classes('text-4xl text-gray-400')
                                     with ui.element('div').classes('flex-1'):
-                                        ui.label(product['title']).classes('font-semibold text-gray-800')
-                                        ui.label(f'GHS {product["price"]:,.2f}').classes('text-primary font-medium')
-                                        with ui.row().classes('items-center gap-4 mt-1'):
-                                            ui.label(f'{product["views"]} views').classes('text-xs text-gray-500')
-                                            ui.label(f'{product["sales"]} sales').classes('text-xs text-green-600')
-                                    with ui.element('div').classes('text-right'):
-                                        status_colors = {'Active': 'bg-green-100 text-green-800', 'Sold': 'bg-blue-100 text-blue-800', 'Draft': 'bg-gray-100 text-gray-800'}
-                                        ui.label(product['status']).classes(f'px-2 py-1 rounded-full text-xs font-medium {status_colors.get(product["status"], "bg-gray-100 text-gray-800")}')
-                                        with ui.row().classes('gap-1 mt-2'):
-                                            ui.button(icon='edit', on_click=lambda e, p=product: (e.stop_propagation(), ui.navigate.to(f"/edit_event?title={p['title']}&id=demo_{p['title'].lower().replace(' ', '_')}"))).classes('text-blue-500 hover:text-blue-600 p-1').props('flat round').tooltip('Edit Product')
-                                            ui.button(icon='delete', on_click=lambda e, p=product: (e.stop_propagation(), delete_demo_product(p['title']))).classes('text-red-500 hover:text-red-600 p-1').props('flat round').tooltip('Delete Product')
-                    
+                                        ui.label(title).classes('font-semibold text-gray-800')
+                                        ui.label(price_text).classes('text-primary font-medium')
+                                        ui.label(f"{category} - {location}").classes('text-xs text-gray-500 mt-1')
+                                    with ui.element('div').classes('flex flex-col items-end gap-2'):
+                                        ui.button('Edit', on_click=lambda e, data=advert: (e.stop_propagation(), ui.navigate.to(f"/edit_event?title={data.get('title', '')}&id={resolve_advert_id(data)}"))).classes('bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs')
+                                        ui.button('Delete', on_click=lambda e, data=advert: (e.stop_propagation(), delete_advert(resolve_advert_id(data), data.get('title', 'Advert')))).classes('bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs')
+
+                        recent_products()
+
+                        async def delete_advert(advert_id: str, title: str):
+                            safe_id = str(advert_id or '').strip()
+                            if not safe_id:
+                                ui.notify('Unable to delete this advert: missing identifier.', type='negative')
+                                return
+                            label_title = title or "this advert"
+                            with ui.dialog() as dialog, ui.card().classes('max-w-md p-6 space-y-4'):
+                                ui.label(f"Delete {label_title}?").classes('text-lg font-semibold')
+                                ui.label('This action cannot be undone.').classes('text-sm text-gray-600')
+                                with ui.row().classes('justify-end gap-3'):
+                                    ui.button('Cancel', on_click=dialog.close).classes('bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded')
+
+                                    async def confirm_delete():
+                                        dialog.close()
+                                        try:
+                                            if not api_client._discovered:
+                                                await api_client.discover_endpoints()
+                                            success, response = await api_client.delete_ad(safe_id)
+                                            if success:
+                                                previous_items = list(adverts_state.get('items') or [])
+                                                filtered_items = [ad for ad in previous_items if resolve_advert_id(ad) != safe_id]
+                                                adverts_state['items'] = filtered_items
+                                                dashboard_stats.refresh()
+                                                recent_products.refresh()
+                                                adverts_table.refresh()
+                                                payload = {'type': 'deleted', 'id': safe_id}
+                                                detail_json = json.dumps(payload)
+                                                ui.run_javascript(
+                                                    f"window.dispatchEvent(new CustomEvent('adverts:changed',{{detail:{detail_json}}}));"
+                                                )
+                                                ui.notify('Advert deleted successfully', type='positive')
+                                            else:
+                                                ui.notify(f"Delete failed: {response}", type='negative')
+                                        except Exception as exc:
+                                            ui.notify(f"Error deleting advert: {exc}", type='negative')
+
+                                    ui.button('Delete', on_click=confirm_delete).classes('bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded')
+                            dialog.open()
+
                     # Recent Orders
                     with ui.card().classes('p-6 bg-gray-50 shadow-sm'):
                         with ui.element('div').classes('flex items-center justify-between mb-6'):
                             ui.label('Recent Orders').classes('text-xl font-bold text-gray-800')
-                            ui.button('View All', on_click=lambda: ui.navigate.to('/orders')).classes('bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-medium')
-                        
-                        orders = [
-                            {'id': 'ORD-001', 'customer': 'John Doe', 'product': 'iPhone 14 Pro', 'amount': 4500, 'status': 'Pending', 'date': '2024-01-20'},
-                            {'id': 'ORD-002', 'customer': 'Jane Smith', 'product': 'Samsung Galaxy S23', 'amount': 3800, 'status': 'Shipped', 'date': '2024-01-19'},
-                            {'id': 'ORD-003', 'customer': 'Mike Johnson', 'product': 'MacBook Pro M2', 'amount': 8500, 'status': 'Delivered', 'date': '2024-01-18'},
-                        ]
-                        
-                        with ui.element('div').classes('space-y-3'):
-                            for order in orders:
-                                def make_order_click_handler(o):
-                                    def view_order():
-                                        ui.navigate.to(f"/orders?order_id={o['id']}")
-                                    return view_order
-                                
-                                with ui.element('div').classes('flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer').on('click', make_order_click_handler(order)):
-                                    with ui.element('div'):
-                                        ui.label(f'#{order["id"]}').classes('font-semibold text-gray-800')
-                                        ui.label(f'{order["customer"]} - {order["product"]}').classes('text-sm text-gray-600')
-                                        ui.label(f'GHS {order["amount"]:,.2f}').classes('text-primary font-medium')
-                                    with ui.element('div').classes('text-right'):
-                                        status_colors = {'Pending': 'bg-yellow-100 text-yellow-800', 'Shipped': 'bg-blue-100 text-blue-800', 'Delivered': 'bg-green-100 text-green-800'}
-                                        ui.label(order['status']).classes(f'px-2 py-1 rounded-full text-xs font-medium {status_colors.get(order["status"], "bg-gray-100 text-gray-800")}')
-                                        ui.label(order['date']).classes('text-xs text-gray-500')
+                        with ui.element('div').classes('text-center py-8 text-gray-500'):
+                            ui.icon('local_shipping').classes('text-4xl text-gray-300 mb-2')
+                            ui.label('Orders will appear here once the orders API is connected.').classes('text-sm text-gray-500')
+
+                # Right Column - Analytics & Actions
                 
                 # Right Column - Analytics & Actions
                 with ui.element('div').classes('space-y-8'):
                     # Sales Analytics
                     with ui.card().classes('p-6 bg-gray-50 shadow-sm'):
                         ui.label('Sales Analytics').classes('text-xl font-bold text-gray-800 mb-6')
-                        
-                        # Weekly sales chart (simplified)
-                        with ui.element('div').classes('space-y-4'):
-                            days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-                            sales = [1200, 1800, 1500, 2200, 1900, 2500, 2100]
-                            
-                            for day, amount in zip(days, sales):
-                                with ui.element('div').classes('flex items-center justify-between'):
-                                    ui.label(day).classes('text-sm text-gray-600 w-8')
-                                    with ui.element('div').classes('flex-1 mx-3'):
-                                        ui.element('div').classes('bg-gray-200 rounded-full h-2').style(f'width: {(amount/2500)*100}%')
-                                    ui.label(f'GHS {amount:,}').classes('text-sm font-medium text-gray-800 w-16 text-right')
-                    
+                        with ui.element('div').classes('text-center py-8 text-gray-500'):
+                            ui.icon('insights').classes('text-4xl text-gray-300 mb-2')
+                            ui.label('Analytics will appear once reporting data is available from the backend.').classes('text-sm text-gray-500')
+
+                    # Quick Actions
                     # Quick Actions
                     with ui.card().classes('p-6 bg-gray-50 shadow-sm'):
                         ui.label('Quick Actions').classes('text-xl font-bold text-gray-800 mb-6')
@@ -142,21 +212,11 @@ def show_dashboard_page(auth_state=None):
                     # Performance Metrics
                     with ui.card().classes('p-6 bg-gray-50 shadow-sm'):
                         ui.label('Performance Metrics').classes('text-xl font-bold text-gray-800 mb-6')
-                        
-                        metrics = [
-                            {'label': 'Conversion Rate', 'value': '12.5%', 'trend': '+2.1%'},
-                            {'label': 'Average Order Value', 'value': 'GHS 1,250', 'trend': '+5.3%'},
-                            {'label': 'Customer Satisfaction', 'value': '4.8/5', 'trend': '+0.2'},
-                            {'label': 'Return Rate', 'value': '3.2%', 'trend': '-0.5%'},
-                        ]
-                        
-                        for metric in metrics:
-                            with ui.element('div').classes('flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0'):
-                                with ui.element('div'):
-                                    ui.label(metric['label']).classes('text-sm text-gray-600')
-                                    ui.label(metric['value']).classes('font-semibold text-gray-800')
-                                ui.label(metric['trend']).classes('text-sm font-medium text-green-600')
-            
+                        with ui.element('div').classes('text-center py-8 text-gray-500'):
+                            ui.icon('leaderboard').classes('text-4xl text-gray-300 mb-2')
+                            ui.label('Performance insights will show here when analytics endpoints are available.').classes('text-sm text-gray-500')
+
+            # My Adverts Section (Enhanced)
             # My Adverts Section (Enhanced)
             with ui.card().classes('mt-8 p-6 bg-gray-50 shadow-sm'):
                 with ui.element('div').classes('flex items-center justify-between mb-6'):
@@ -166,35 +226,35 @@ def show_dashboard_page(auth_state=None):
                         category_filter = ui.select(['All Categories', 'Electronics', 'Fashion', 'Furniture', 'Vehicles', 'Real Estate', 'Services'], value='All Categories').props('outlined')
                         ui.button('Add New', on_click=lambda: ui.navigate.to('/add_event')).classes('bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg')
                 
+                table_state = {'lookup': {}}
+
                 @ui.refreshable
                 def adverts_table():
                     async def load_adverts():
                         try:
-                            # Use the API client for consistent authentication and error handling
-                            from utils.api_client import api_client
-                            
-                            # Ensure API client is initialized
                             if not api_client._discovered:
                                 await api_client.discover_endpoints()
-                            
-                            # Get all adverts
+
                             success, response = await api_client.get_ads()
-                            
+
                             if not success:
                                 ui.notify('Failed to load adverts', type='negative')
                                 return
-                            
-                            # Handle different response formats
+
                             if isinstance(response, dict):
                                 adverts = response.get("data", response.get("adverts", response.get("items", [])))
                             elif isinstance(response, list):
                                 adverts = response
                             else:
                                 adverts = []
-                            
-                            # For demo purposes, show all adverts (in real app, filter by user)
+
                             user_adverts = adverts
-                            
+                            adverts_state['items'] = user_adverts
+                            dashboard_stats.refresh()
+                            recent_products.refresh()
+
+                            table_state['lookup'] = {resolve_advert_id(ad): ad for ad in user_adverts}
+
                             if not user_adverts:
                                 with ui.element('div').classes('text-center py-12'):
                                     ui.icon('inventory').classes('text-6xl text-gray-300 mb-4')
@@ -202,93 +262,85 @@ def show_dashboard_page(auth_state=None):
                                     ui.label('Start by posting your first advert').classes('text-gray-400 mb-4')
                                     ui.button('Post Advert', on_click=lambda: ui.navigate.to('/add_event')).classes('bg-primary hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold')
                                 return
-                            
-                            # Create enhanced table with image preview
-                            with ui.table(columns=[
-                                {'name': 'image', 'label': 'Image', 'field': 'image'},
-                                {'name': 'title', 'label': 'Title', 'field': 'title'},
-                                {'name': 'category', 'label': 'Category', 'field': 'category'},
-                                {'name': 'price', 'label': 'Price', 'field': 'price'},
-                                {'name': 'status', 'label': 'Status', 'field': 'status'},
-                                {'name': 'actions', 'label': 'Actions', 'field': 'actions'}
-                            ], rows=[]).classes('w-full'):
-                                for advert in user_adverts:
-                                    with ui.table_row():
-                                        # Image cell
-                                        with ui.table_cell():
-                                            image_data = advert.get('image', '')
-                                            if image_data and isinstance(image_data, str):
-                                                if image_data.startswith('http'):
-                                                    # Direct URL (like Cloudinary)
-                                                    try:
-                                                        ui.image(image_data).classes('w-16 h-16 object-cover rounded')
-                                                    except:
-                                                        ui.icon('image').classes('text-4xl text-gray-400')
-                                                elif image_data.startswith('data:'):
-                                                    # Base64 data URL
-                                                    try:
-                                                        ui.image(image_data).classes('w-16 h-16 object-cover rounded')
-                                                    except:
-                                                        ui.icon('image').classes('text-4xl text-gray-400')
-                                                elif len(image_data) > 50:
-                                                    # Assume it's base64 data without prefix
-                                                    try:
-                                                        ui.image(f'data:image/jpeg;base64,{image_data}').classes('w-16 h-16 object-cover rounded')
-                                                    except:
-                                                        ui.icon('image').classes('text-4xl text-gray-400')
-                                                else:
-                                                    ui.icon('image').classes('text-4xl text-gray-400')
-                                            else:
-                                                ui.icon('image').classes('text-4xl text-gray-400')
-                                        
-                                        ui.table_cell(advert.get('title', 'N/A'))
-                                        ui.table_cell(advert.get('category', 'N/A'))
-                                        ui.table_cell(f"GHS {advert.get('price', 0):,.2f}")
-                                        ui.table_cell('Active')
-                                        with ui.table_cell():
-                                            with ui.row().classes('gap-2'):
-                                                ui.button('View', on_click=lambda a=advert: ui.navigate.to(f"/view_event?title={a.get('title', '')}&id={a.get('id', '')}")).classes('bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm')
-                                                ui.button('Edit', on_click=lambda a=advert: ui.navigate.to(f"/edit_event?title={a.get('title', '')}&id={a.get('id', '')}")).classes('bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm')
-                                                ui.button('Delete', on_click=lambda a=advert: delete_advert(a.get('id', a.get('title', '')))).classes('bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm')
-                        
+
+                            columns = [
+                                {'name': 'id', 'label': 'ID', 'field': 'id', 'align': 'left', 'sortable': False, 'classes': 'hidden', 'headerClasses': 'hidden', 'style': 'display:none'},
+                                {'name': 'image', 'label': 'Image', 'field': 'image', 'align': 'left', 'sortable': False},
+                                {'name': 'title', 'label': 'Title', 'field': 'title', 'align': 'left'},
+                                {'name': 'category', 'label': 'Category', 'field': 'category', 'align': 'left'},
+                                {'name': 'price', 'label': 'Price', 'field': 'price', 'align': 'left'},
+                                {'name': 'status', 'label': 'Status', 'field': 'status', 'align': 'left'},
+                                {'name': 'actions', 'label': 'Actions', 'field': 'actions', 'align': 'right', 'sortable': False},
+                            ]
+
+                            rows = []
+                            for advert in user_adverts:
+                                advert_id = resolve_advert_id(advert)
+                                price_value = advert.get('price')
+                                try:
+                                    price_text = f"GHS {float(price_value):,.2f}"
+                                except (TypeError, ValueError):
+                                    price_text = 'GHS 0.00'
+
+                                rows.append({
+                                    'id': advert_id,
+                                    'image': advert.get('image', '') or advert.get('image_url', ''),
+                                    'title': advert.get('title', 'N/A'),
+                                    'category': advert.get('category', 'N/A'),
+                                    'price': price_text,
+                                    'status': advert.get('status', 'Active'),
+                                    'actions': advert_id,
+                                })
+
+                            table = ui.table(columns=columns, rows=rows, row_key='id').classes('w-full')
+
+                            lookup = table_state['lookup']
+
+                            @table.add_slot('body-cell-image')
+                            def slot_image(row):
+                                advert = lookup.get(row['id'])
+                                image_data = row.get('image')
+                                with ui.element('div'):
+                                    if image_data and isinstance(image_data, str):
+                                        if image_data.startswith('http'):
+                                            ui.image(image_data).classes('w-16 h-16 object-cover rounded')
+                                        elif len(image_data) > 50:
+                                            ui.image(f'data:image/jpeg;base64,{image_data}').classes('w-16 h-16 object-cover rounded')
+                                        else:
+                                            ui.icon('image').classes('text-4xl text-gray-400')
+                                    else:
+                                        ui.icon('image').classes('text-4xl text-gray-400')
+
+                            @table.add_slot('body-cell-actions')
+                            def slot_actions(row):
+                                advert = lookup.get(row['id'])
+                                advert_id = row['id']
+                                title = row.get('title', 'Advert')
+                                with ui.row().classes('gap-2 justify-end'):
+                                    ui.button('View', on_click=lambda: ui.navigate.to(f"/view_event?title={title}&id={advert_id}"))\
+                                        .classes('bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm')
+                                    ui.button('Edit', on_click=lambda: ui.navigate.to(f"/edit_event?title={title}&id={advert_id}"))\
+                                        .classes('bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm')
+                                    ui.button('Delete', on_click=lambda: delete_advert(advert_id, title))\
+                                        .classes('bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm')
+
                         except Exception as e:
                             ui.notify(f"Error loading adverts: {e}", type='negative')
                             print(f"Dashboard error: {e}")
-                    
+
                     ui.timer(0.1, load_adverts, once=True)
-                
-                async def delete_advert(ad_id: str):
-                    # Show confirmation dialog
-                    with ui.dialog() as dialog, ui.card():
-                        ui.label(f'Are you sure you want to delete this advert?').classes('text-lg font-semibold mb-4')
-                        ui.label('This action cannot be undone.').classes('text-gray-600 mb-6')
-                        
-                        with ui.row().classes('gap-4 justify-end'):
-                            ui.button('Cancel', on_click=dialog.close).classes('bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded')
-                            
-                            async def confirm_delete():
-                                dialog.close()
-                                try:
-                                    # Use the API client's delete method with authentication
-                                    from utils.api_client import api_client
-                                    success, response = await api_client.delete_ad(ad_id)
-                                    
-                                    if success:
-                                        ui.notify('Advert deleted successfully', type='positive')
-                                        adverts_table.refresh()
-                                    else:
-                                        ui.notify(f'Failed to delete advert: {response}', type='negative')
-                                except Exception as e:
-                                    ui.notify(f"Error deleting advert: {e}", type='negative')
-                            
-                            ui.button('Delete', on_click=confirm_delete).classes('bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded')
-                    
-                    dialog.open()
-                
+
                 adverts_table()
 
-def delete_demo_product(product_title: str):
-    """Delete a demo product from the Recent Products section"""
-    ui.notify(f'Demo product "{product_title}" would be deleted in a real implementation', type='info')
-    # In a real implementation, this would make an API call to delete the product
-    # For now, just show a notification
+                def handle_adverts_changed(event):
+                    detail = getattr(event, 'args', {}) or {}
+                    event_type = detail.get('type')
+                    if event_type in {'created', 'updated', 'deleted', None}:
+                        adverts_table.refresh()
+
+                ui.on('adverts_changed', handle_adverts_changed)
+
+
+
+
+
