@@ -24,7 +24,7 @@ def show_view_event_page():
                     ui.icon('error').classes('text-4xl text-red-500 mb-4')
                     ui.label('Product not found').classes('text-xl font-semibold text-gray-800')
                     ui.label("The product you're looking for doesn't exist").classes('text-gray-600 mt-2')
-                    ui.link('Back to Home', '/').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold no-underline mt-4')
+                    ui.link('Back to Home', '/').classes('bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold no-underline mt-4')
         return
 
     async def load():

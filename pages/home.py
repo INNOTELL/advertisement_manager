@@ -38,7 +38,7 @@ def show_home_page(auth_state=None):
     with ui.element("div").classes("min-h-screen bg-white overflow-x-hidden w-full max-w-full pb-20 md:pb-0"):
         
         # Hero Slideshow Section
-        with ui.element('div').classes('w-full h-96 mb-6 overflow-hidden relative'):
+        with ui.element('div').classes('w-full h-96 text-white mb-6 overflow-hidden relative'):
             # Slideshow images with Product Categories and Items
             slideshow_images = [
                 {
@@ -84,19 +84,19 @@ def show_home_page(auth_state=None):
                         # Main brand logo with star
                         with ui.element('div').classes('flex items-center justify-center gap-3 mb-4 flex-wrap'):
                             ui.label('INNO').classes('text-4xl sm:text-6xl font-bold text-white drop-shadow-lg')
-                            ui.icon('star').classes('text-yellow-400 text-3xl sm:text-5xl drop-shadow-lg')
+                            ui.icon('star').classes('text-blue-600 text-3xl sm:text-5xl drop-shadow-lg')
                             ui.label('HUB').classes('text-4xl sm:text-6xl font-bold text-white drop-shadow-lg')
                         
                         # Location
-                        ui.label('Ghana').classes('text-lg sm:text-xl text-yellow-200 mb-4 font-medium drop-shadow-md')
+                        ui.label('Ghana').classes('text-lg sm:text-xl text-blue-100 mb-4 font-medium drop-shadow-md')
                         
                         # Dynamic title and subtitle
                         ui.label(slide['title']).classes('text-lg sm:text-2xl font-semibold text-white mb-2 break-words px-4 drop-shadow-md max-w-4xl mx-auto')
-                        ui.label(slide['subtitle']).classes('text-base sm:text-lg text-yellow-100 break-words px-4 drop-shadow-md mb-6')
+                        ui.label(slide['subtitle']).classes('text-base sm:text-lg text-blue-100 break-words px-4 drop-shadow-md mb-6')
                         
                         # Call to action buttons
                         with ui.element('div').classes('flex flex-col sm:flex-row gap-4 justify-center items-center'):
-                            ui.button('Browse Ads', on_click=lambda: ui.navigate.to('/?cat=all')).classes('bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300')
+                            ui.button('Browse Ads', on_click=lambda: ui.navigate.to('/?cat=all')).classes('bg-blue-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300')
                             ui.button('Post Ad', on_click=lambda: ui.navigate.to('/add_event')).classes('bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300')
                 
                 slide_elements.append(slide_div)
@@ -195,8 +195,8 @@ def show_home_page(auth_state=None):
                             'title': 'FASHION WEEK',
                             'subtitle': 'UP TO 50% OFF',
                             'disclaimer': 'New Arrivals',
-                            'bg_color': 'from-pink-600 to-pink-700',
-                            'accent_color': 'pink',
+                            'bg_color': 'from-blue-700 to-blue-400',
+                            'accent_color': 'blue',
                             'products': [
                                 {'icon': 'checkroom', 'label': 'Dresses'},
                                 {'icon': 'watch', 'label': 'Accessories'}
@@ -211,8 +211,8 @@ def show_home_page(auth_state=None):
                             'title': 'VEHICLE DEALS',
                             'subtitle': 'UP TO 30% OFF',
                             'disclaimer': 'Best Prices',
-                            'bg_color': 'from-orange-600 to-red-600',
-                            'accent_color': 'orange',
+                            'bg_color': 'from-blue-800 to-blue-300',
+                            'accent_color': 'blue',
                             'products': [
                                 {'icon': 'directions_car', 'label': 'Cars'},
                                 {'icon': 'motorcycle', 'label': 'Bikes'}
@@ -227,8 +227,8 @@ def show_home_page(auth_state=None):
                             'title': 'REAL ESTATE',
                             'subtitle': 'PRIME LOCATIONS',
                             'disclaimer': 'Limited Offers',
-                            'bg_color': 'from-green-600 to-green-700',
-                            'accent_color': 'green',
+                            'bg_color': 'from-blue-600 to-blue-900',
+                            'accent_color': 'blue',
                             'products': [
                                 {'icon': 'home_work', 'label': 'Houses'},
                                 {'icon': 'apartment', 'label': 'Apartments'}

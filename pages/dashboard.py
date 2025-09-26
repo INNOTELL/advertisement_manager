@@ -60,9 +60,9 @@ def show_dashboard_page(auth_state=None):
 
                 metrics = [
                     {'title': 'Total Listings', 'value': str(total), 'icon': 'inventory', 'color': 'bg-blue-500'},
-                    {'title': 'Average Price', 'value': f"GHS {avg_price:,.2f}" if prices else 'GHS 0.00', 'icon': 'attach_money', 'color': 'bg-green-500'},
-                    {'title': 'Highest Price', 'value': f"GHS {highest:,.2f}" if highest is not None else 'N/A', 'icon': 'trending_up', 'color': 'bg-purple-500'},
-                    {'title': 'Lowest Price', 'value': f"GHS {lowest:,.2f}" if lowest is not None else 'N/A', 'icon': 'trending_down', 'color': 'bg-orange-500'},
+                    {'title': 'Average Price', 'value': f"GHS {avg_price:,.2f}" if prices else 'GHS 0.00', 'icon': 'attach_money', 'color': 'bg-blue-300'},
+                    {'title': 'Highest Price', 'value': f"GHS {highest:,.2f}" if highest is not None else 'N/A', 'icon': 'trending_up', 'color': 'bg-blue-500'},
+                    {'title': 'Lowest Price', 'value': f"GHS {lowest:,.2f}" if lowest is not None else 'N/A', 'icon': 'trending_down', 'color': 'bg-blue-300'},
                 ]
 
                 with ui.element('div').classes('grid grid-cols-1 md:grid-cols-4 gap-6 mb-8'):

@@ -2,7 +2,7 @@ from nicegui import ui
 
 def show_footer():
     # Jumia-style footer with newsletter and app download
-    with ui.element('div').classes('bg-teal-600 text-white py-6 mt-8'):
+    with ui.element('div').classes('bg-blue-900 text-white py-6 mt-8'):
         with ui.element('div').classes('container mx-auto px-4'):
             with ui.element('div').classes('grid grid-cols-1 lg:grid-cols-3 gap-6 items-start'):
                 

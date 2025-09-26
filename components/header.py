@@ -4,10 +4,10 @@ from config import USER_ROLES
 
 def show_header(auth_state=None, logout_user=None):
     # Top Header Bar (Dark Grey - Jumia style) - Fixed at top
-    with ui.element('div').classes('w-full bg-secondary text-white py-2 text-sm sticky top-0 z-50'):
+    with ui.element('div').classes('w-full bg-blue-500 text-white py-2 text-sm sticky top-0 z-50'):
         with ui.element('div').classes('container mx-auto px-4 flex items-center justify-between'):
             with ui.row().classes('items-center gap-6'):
-                ui.label('Free delivery on orders over GHS 200').classes('text-gray-300')
+                ui.label('Free delivery on orders over GHS 200').classes('text-white')
                 ui.label('•').classes('text-gray-400')
                 ui.label('24/7 Customer Support').classes('text-gray-300')
             with ui.row().classes('items-center gap-4'):
