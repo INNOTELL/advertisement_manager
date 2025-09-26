@@ -15,20 +15,20 @@ class APIClient:
         self._discovered = False
         # Ensure we always have fallback routes
         self._use_fallback_routes()
-        print(f"🔧 API Client initialized with fallback routes: {self.routes}")
+        print(f" API Client initialized with fallback routes: {self.routes}")
     
     async def discover_endpoints(self) -> bool:
         """Discover API endpoints from OpenAPI spec"""
         if self._discovered:
             return True
         
-        print(f"🔍 Starting OpenAPI discovery from: {self.base_url}")
+        print(f" Starting OpenAPI discovery from: {self.base_url}")
         
         for url in OPENAPI_URL_CANDIDATES:
             try:
-                print(f"🌐 Trying OpenAPI URL: {url}")
+                print(f" Trying OpenAPI URL: {url}")
                 response = await asyncio.to_thread(requests.get, url, timeout=30)
-                print(f"📡 OpenAPI response status: {response.status_code}")
+                print(f" OpenAPI response status: {response.status_code}")
                 
                 if response.status_code == 200:
                     spec = response.json()
@@ -36,17 +36,17 @@ class APIClient:
                         self.openapi_spec = spec
                         self._map_routes(spec)
                         self._discovered = True
-                        print(f"✅ OpenAPI discovery successful from: {url}")
+                        print(f" OpenAPI discovery successful from: {url}")
                         return True
                     else:
-                        print(f"❌ Invalid OpenAPI spec from: {url}")
+                        print(f" Invalid OpenAPI spec from: {url}")
                 else:
-                    print(f"❌ HTTP {response.status_code} from: {url}")
+                    print(f" HTTP {response.status_code} from: {url}")
             except Exception as e:
-                print(f"❌ Failed to fetch OpenAPI from {url}: {e}")
+                print(f" Failed to fetch OpenAPI from {url}: {e}")
                 continue
         
-        print("❌ OpenAPI discovery failed, using fallback routes")
+        print(" OpenAPI discovery failed, using fallback routes")
         self._use_fallback_routes()
         self._discovered = True  # Mark as discovered even with fallback
         return True  # Return True since we have fallback routes
@@ -60,7 +60,7 @@ class APIClient:
         """Map API routes from OpenAPI spec"""
         paths = spec.get("paths", {})
         
-        print(f"🔍 Available paths: {list(paths.keys())}")
+        print(f" Available paths: {list(paths.keys())}")
         
         # Auth endpoints - be more specific about matching
         for path, operations in paths.items():
@@ -70,43 +70,43 @@ class APIClient:
                     operation_id = operation.get("operationId", "").lower()
                     combined = f"{summary} {operation_id} {path}".lower()
                     
-                    print(f"🔍 Checking path: {path} {method} - {combined}")
+                    print(f" Checking path: {path} {method} - {combined}")
                     
                     # Auth routes - be more specific
                     if method == "post":
                         if any(keyword in combined for keyword in ["login", "signin", "authenticate"]) and not any(bad in combined for bad in ["logout", "signout"]):
                             self.routes["auth"]["signin"] = path
-                            print(f"✅ Found signin: {path}")
+                            print(f" Found signin: {path}")
                         
                         elif any(keyword in combined for keyword in ["signup", "register", "create user"]) and not any(bad in combined for bad in ["login", "signin"]):
                             self.routes["auth"]["signup"] = path
-                            print(f"✅ Found signup: {path}")
+                            print(f" Found signup: {path}")
                     
                     elif method == "get":
                         if any(keyword in combined for keyword in ["me", "profile", "current user"]) and not any(bad in combined for bad in ["recommendations", "ads", "list"]):
                             self.routes["auth"]["me"] = path
-                            print(f"✅ Found me: {path}")
+                            print(f" Found me: {path}")
                     
                     # Ads routes
                     elif "/ads" in path or "/advertisements" in path or "/adverts" in path:
                         if method == "get" and "{" not in path and "list" in combined:
                             self.routes["ads"]["list"] = path
-                            print(f"✅ Found ads list: {path}")
+                            print(f" Found ads list: {path}")
                         elif method == "post" and "create" in combined:
                             self.routes["ads"]["create"] = path
-                            print(f"✅ Found ads create: {path}")
+                            print(f" Found ads create: {path}")
                         elif "{" in path:
                             if method == "get" and "detail" in combined:
                                 self.routes["ads"]["detail"] = path
-                                print(f"✅ Found ads detail: {path}")
+                                print(f" Found ads detail: {path}")
                             elif method in ["patch", "put"] and "update" in combined:
                                 self.routes["ads"]["update"] = path
-                                print(f"✅ Found ads update: {path}")
+                                print(f" Found ads update: {path}")
                             elif method == "delete":
                                 self.routes["ads"]["delete"] = path
-                                print(f"✅ Found ads delete: {path}")
+                                print(f" Found ads delete: {path}")
         
-        print(f"🔍 Final discovered routes: {self.routes}")
+        print(f" Final discovered routes: {self.routes}")
     
     def _use_fallback_routes(self) -> None:
         """Use fallback routes if discovery fails"""
@@ -140,7 +140,7 @@ class APIClient:
                 hasattr(ui.context.client, 'request')):
                 ui.run_javascript(f'localStorage.setItem("auth_token", "{token}")')
         except Exception as e:
-            print(f"⚠️ Could not access localStorage - not in UI context: {e}")
+            print(f" Could not access localStorage - not in UI context: {e}")
             pass  # Ignore if not in UI context
     
     def clear_token(self) -> None:
@@ -153,7 +153,7 @@ class APIClient:
                 hasattr(ui.context.client, 'request')):
                 ui.run_javascript('localStorage.removeItem("auth_token")')
         except Exception as e:
-            print(f"⚠️ Could not access localStorage - not in UI context: {e}")
+            print(f" Could not access localStorage - not in UI context: {e}")
             pass  # Ignore if not in UI context
     
     def _prepare_image_file(self, image_data: Any):
@@ -178,7 +178,7 @@ class APIClient:
             image_file = io.BytesIO(image_bytes)
             return ("image.jpg", image_file, "image/jpeg")
         except Exception as err:
-            print(f"⚠️ Could not prepare image file: {err}")
+            print(f" Could not prepare image file: {err}")
             return None
 
     def get_headers(self) -> Dict[str, str]:
@@ -198,10 +198,10 @@ class APIClient:
             url = f"{self.base_url}{endpoint}"
             headers = self.get_headers()
             
-            print(f"🌐 HTTP {method} {url}")
-            print(f"📋 Headers: {headers}")
+            print(f" HTTP {method} {url}")
+            print(f" Headers: {headers}")
             if data:
-                print(f"📤 Data: {data}")
+                print(f" Data: {data}")
             
             response = await asyncio.to_thread(
                 requests.request,
@@ -213,8 +213,8 @@ class APIClient:
                 timeout=30
             )
             
-            print(f"📡 Response status: {response.status_code}")
-            print(f"📥 Response headers: {dict(response.headers)}")
+            print(f" Response status: {response.status_code}")
+            print(f" Response headers: {dict(response.headers)}")
             
             # Handle authentication errors
             if response.status_code == 401:
@@ -232,10 +232,10 @@ class APIClient:
                 try:
                     error_data = response.json()
                     error_msg = error_data.get("detail", error_data.get("message", error_msg))
-                    print(f"❌ Error response: {error_data}")
+                    print(f" Error response: {error_data}")
                 except:
                     error_msg = response.text or error_msg
-                    print(f"❌ Error text: {error_msg}")
+                    print(f" Error text: {error_msg}")
                 
                 ui.notify(f"Error: {error_msg}", type="negative")
                 return False, error_msg
@@ -243,21 +243,21 @@ class APIClient:
             # Success
             try:
                 result = response.json()
-                print(f"✅ Success response: {result}")
+                print(f" Success response: {result}")
                 return True, result
             except:
                 result = response.text
-                print(f"✅ Success text: {result}")
+                print(f" Success text: {result}")
                 return True, result
                 
         except Exception as e:
-            print(f"❌ Request exception: {e}")
+            print(f" Request exception: {e}")
             # Only show UI notifications if we're in a UI context
             try:
                 ui.notify(f"Network error: {str(e)}", type="negative")
             except (RuntimeError, AttributeError):
                 # We're in a background task, just log the error
-                print(f"⚠️ Network error - not in UI context: {e}")
+                print(f" Network error - not in UI context: {e}")
             return False, str(e)
     
     # Auth methods
@@ -265,7 +265,7 @@ class APIClient:
         """Sign up new user"""
         endpoint = self.routes["auth"]["signup"]
         if not endpoint:
-            print("❌ No signup endpoint found!")
+            print(" No signup endpoint found!")
             return False, "No signup endpoint configured"
         
         # According to backend API spec: email and role as query params, username/password as form data
@@ -277,9 +277,9 @@ class APIClient:
             "username": name,  # 6-20 characters
             "password": password  # minimum 8 characters
         }
-        print(f"🌐 Making signup request to: {self.base_url}{endpoint}")
-        print(f"📤 Request params: {params}")
-        print(f"📤 Request data: {data}")
+        print(f" Making signup request to: {self.base_url}{endpoint}")
+        print(f" Request params: {params}")
+        print(f" Request data: {data}")
         
         # Use form data with query params (not JSON)
         try:
@@ -292,8 +292,8 @@ class APIClient:
                 timeout=30
             )
             
-            print(f"📡 Response status: {response.status_code}")
-            print(f"📥 Response: {response.text}")
+            print(f" Response status: {response.status_code}")
+            print(f" Response: {response.text}")
             
             if response.status_code == 200:
                 raw_body = response.text
@@ -306,7 +306,7 @@ class APIClient:
                     cleaned = (raw_body or "").strip()
                     if cleaned:
                         result = {'message': cleaned}
-                print(f"✅ Success response: {result}")
+                print(f" Success response: {result}")
                 return True, result
             else:
                 error_msg = "Request failed"
@@ -320,18 +320,18 @@ class APIClient:
 
                     error_msg = "Access denied. Please ensure you have vendor permissions to manage adverts."
                 
-                print(f"❌ Error response: {error_msg}")
+                print(f" Error response: {error_msg}")
                 return False, error_msg
                 
         except Exception as e:
-            print(f"❌ Request exception: {e}")
+            print(f" Request exception: {e}")
             return False, str(e)
     
     async def signin(self, email: str, password: str) -> Tuple[bool, Any]:
         """Sign in user"""
         endpoint = self.routes["auth"]["signin"]
         if not endpoint:
-            print("❌ No signin endpoint found!")
+            print(" No signin endpoint found!")
             return False, "No signin endpoint configured"
         
         # Backend expects credentials as query parameters
@@ -339,8 +339,8 @@ class APIClient:
             "email": email,
             "password": password
         }
-        print(f"🌐 Making signin request to: {self.base_url}{endpoint}")
-        print(f"📤 Request params: {params}")
+        print(f" Making signin request to: {self.base_url}{endpoint}")
+        print(f" Request params: {params}")
         
         try:
             url = f"{self.base_url}{endpoint}"
@@ -351,8 +351,8 @@ class APIClient:
                 timeout=30
             )
             
-            print(f"📡 Response status: {response.status_code}")
-            print(f"📥 Response: {response.text}")
+            print(f" Response status: {response.status_code}")
+            print(f" Response: {response.text}")
             
             if response.status_code == 200:
                 raw_body = response.text
@@ -370,14 +370,14 @@ class APIClient:
                         result = {'message': cleaned}
                         if cleaned.count('.') >= 2 or len(cleaned) > 20:
                             result['access_token'] = cleaned
-                print(f"✅ Success response: {result}")
+                print(f" Success response: {result}")
 
                 token = result.get('access_token') or result.get('token')
                 if token:
                     self.set_token(str(token))
-                    print(f"✅ Token set successfully")
+                    print(f" Token set successfully")
                 else:
-                    print(f"⚠️ No token found in response")
+                    print(f" No token found in response")
 
                 return True, result
             else:
@@ -392,11 +392,11 @@ class APIClient:
 
                     error_msg = "Access denied. Please ensure you have vendor permissions to manage adverts."
                 
-                print(f"❌ Error response: {error_msg}")
+                print(f" Error response: {error_msg}")
                 return False, error_msg
                 
         except Exception as e:
-            print(f"❌ Request exception: {e}")
+            print(f" Request exception: {e}")
             return False, str(e)
     
     async def get_profile(self) -> Tuple[bool, Any]:
@@ -426,8 +426,8 @@ class APIClient:
                 "Authorization": f"Bearer {self.token}" if self.token else ""
             }
 
-            print(f"⚙️ HTTP POST {url}")
-            print(f"⚙️ Params: {params}")
+            print(f" HTTP POST {url}")
+            print(f" Params: {params}")
 
             form_data = {
                 "title": ad_data.get("title"),
@@ -453,8 +453,8 @@ class APIClient:
                 timeout=30
             )
 
-            print(f"📨 Response status: {response.status_code}")
-            print(f"📨 Response headers: {dict(response.headers)}")
+            print(f" Response status: {response.status_code}")
+            print(f" Response headers: {dict(response.headers)}")
 
             if response.status_code == 401:
                 self.clear_token()
@@ -486,19 +486,19 @@ class APIClient:
 
             try:
                 result = response.json()
-                print(f"✅ Success response: {result}")
+                print(f" Success response: {result}")
                 return True, result
             except Exception:
                 result = response.text
-                print(f"✅ Success text: {result}")
+                print(f" Success text: {result}")
                 return True, result
 
         except Exception as exc:
-            print(f"❌ Request exception: {exc}")
+            print(f" Request exception: {exc}")
             try:
                 ui.notify(f"Network error: {str(exc)}", type="negative")
             except (RuntimeError, AttributeError):
-                print(f"⚠️ Network error - not in UI context: {exc}")
+                print(f" Network error - not in UI context: {exc}")
             return False, str(exc)
 
     async def update_ad_multipart(self, ad_id: str, ad_data: Dict, category: Optional[str] = None, location: Optional[str] = None) -> Tuple[bool, Any]:
@@ -532,9 +532,9 @@ class APIClient:
                 "Authorization": f"Bearer {self.token}" if self.token else ""
             }
 
-            print(f"⚙️ HTTP PUT {url}")
-            print(f"⚙️ Params: {params}")
-            print(f"⚙️ Form data: {form_data}")
+            print(f" HTTP PUT {url}")
+            print(f" Params: {params}")
+            print(f" Form data: {form_data}")
 
             response = await asyncio.to_thread(
                 requests.put,
@@ -546,8 +546,8 @@ class APIClient:
                 timeout=30
             )
 
-            print(f"📨 Response status: {response.status_code}")
-            print(f"📨 Response headers: {dict(response.headers)}")
+            print(f" Response status: {response.status_code}")
+            print(f" Response headers: {dict(response.headers)}")
 
             if response.status_code == 401:
                 self.clear_token()
@@ -579,19 +579,19 @@ class APIClient:
 
             try:
                 result = response.json()
-                print(f"✅ Update success: {result}")
+                print(f" Update success: {result}")
                 return True, result
             except Exception:
                 result = response.text
-                print(f"✅ Update success (text): {result}")
+                print(f" Update success (text): {result}")
                 return True, result
 
         except Exception as exc:
-            print(f"❌ Update exception: {exc}")
+            print(f" Update exception: {exc}")
             try:
                 ui.notify(f"Network error: {str(exc)}", type="negative")
             except (RuntimeError, AttributeError):
-                print(f"⚠️ Network error - not in UI context: {exc}")
+                print(f" Network error - not in UI context: {exc}")
             return False, str(exc)
 
     async def get_ad(self, ad_id: str) -> Tuple[bool, Any]:

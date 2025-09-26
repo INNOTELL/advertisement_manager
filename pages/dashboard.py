@@ -1,4 +1,5 @@
 import json
+import asyncio
 
 from nicegui import ui
 from utils.api_client import api_client
@@ -290,7 +291,7 @@ def show_dashboard_page(auth_state=None):
                             ui.notify(f"Error loading adverts: {e}", type='negative')
                             print(f"Dashboard error: {e}")
 
-                    ui.timer(0.1, load_adverts, once=True)
+                    ui.timer(0.1, lambda: asyncio.create_task(load_adverts()), once=True)
 
                 adverts_table()
 
