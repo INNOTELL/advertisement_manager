@@ -244,4 +244,8 @@ def show_edit_event_page():
                         ui.navigate.to(f'/view_event?title={quote(str(original_title))}')
                     ui.button('Cancel', on_click=go_cancel).classes('bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold')
                     save_button_ref['button'] = ui.button('Save Changes', on_click=save, icon='save').classes('bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold')
+            
+            # Add bottom spacing to push footer down
+            with ui.element('div').classes('h-16'):
+                pass
 

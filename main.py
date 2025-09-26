@@ -51,6 +51,7 @@ from pages.auth import show_login_page, show_signup_page
 from pages.dashboard import show_dashboard_page
 from pages.account import show_account_page
 from pages.orders import show_orders_page
+from pages.order_details import show_order_details_page
 from pages.analytics import show_analytics_page
 from pages.wishlist import show_wishlist_page
 from pages.cart import show_cart_page
@@ -171,6 +172,15 @@ def orders_page():
         return
     show_header(auth_state, logout_user)
     show_orders_page(auth_state)
+    show_footer()
+
+@ui.page('/order_details')
+def order_details_page():
+    if not auth_state.is_authenticated:
+        ui.navigate.to('/login')
+        return
+    show_header(auth_state, logout_user)
+    show_order_details_page()
     show_footer()
 
 @ui.page('/analytics')

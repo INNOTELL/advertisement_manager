@@ -12,6 +12,9 @@ OPENAPI_URL_CANDIDATES = [
 # Session Configuration
 SESSION_TTL_MIN = 120
 
+# AI Configuration
+GEMINI_API_KEY = "AIzaSyAQdHbvTLffjzEWpv1sDGxtWWnBsGQXp7g"
+
 # API Endpoints (matching backend documentation exactly)
 API_ROUTES = {
     "auth": {

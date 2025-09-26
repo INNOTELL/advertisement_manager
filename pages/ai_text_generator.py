@@ -2,8 +2,7 @@ from nicegui import ui
 import asyncio
 from utils.api_client import api_client
 from utils.auth import auth_state, logout
-from components.header import show_header
-from components.footer import show_footer
+# Header and footer are handled by main.py
 
 def show_ai_text_generator_page():
     # AI Text Generator Page

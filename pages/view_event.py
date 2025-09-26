@@ -3,8 +3,7 @@ import requests
 import asyncio
 from urllib.parse import quote
 from utils.api import base_url
-from components.footer import show_footer
-from components.header import show_header
+# Header and footer are handled by main.py
 from utils.auth import auth_state, logout
 
 
@@ -14,8 +13,7 @@ def show_view_event_page():
     title = q.get('title')
     advert_id = q.get('id')  # Also check for ID parameter
     
-    # Show header
-    show_header(auth_state, logout)
+    # Header is handled by main.py
     
     if not title and not advert_id:
         with ui.element('div').classes('min-h-screen w-full max-w-full px-4 py-8'):
@@ -24,7 +22,7 @@ def show_view_event_page():
                 ui.label('Product not found').classes('text-xl font-semibold text-gray-800')
                 ui.label('The product you\'re looking for doesn\'t exist').classes('text-gray-600 mt-2')
                 ui.link('Back to Home', '/').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold no-underline mt-4')
-        show_footer()
+        # Footer is handled by main.py
         return
 
     async def load():
@@ -62,10 +60,11 @@ def show_view_event_page():
                     items = []
                 else:
                     items = [target_advert]
-                
+            
         except Exception as e:
             print(f"Error loading advert details: {e}")
             items = []
+        
         if not items:
             with ui.element('div').classes('min-h-screen w-full max-w-full px-4 py-8'):
                 with ui.card().classes('p-6 text-center max-w-2xl mx-auto'):
@@ -73,27 +72,20 @@ def show_view_event_page():
                     ui.label('Product not found').classes('text-xl font-semibold text-gray-800')
                     ui.label('The product you\'re looking for doesn\'t exist').classes('text-gray-600 mt-2')
                     ui.link('Back to Home', '/').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold no-underline mt-4')
-            show_footer()
+            # Footer is handled by main.py
             return
         
         data = items[0]
         
-        # Enhanced product detail page with full screen orientation
-        with ui.element('div').classes('min-h-screen w-full max-w-full px-4 py-4'):
-            with ui.element('div').classes('w-full max-w-7xl mx-auto'):
+        # Enhanced product detail page with proper footer positioning
+        with ui.element('div').classes('min-h-screen bg-gray-50'):
+            with ui.element('div').classes('w-full max-w-7xl mx-auto px-4 py-4'):
                 # Back button and breadcrumb
                 with ui.element('div').classes('mb-6 flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200'):
                     # Back button - more visible and functional
                     def go_back():
-                        # Get the current product's category to return to the right section
-                        current_category = data.get('category', '')
-                        current_title = data.get('title', '')
-                        
-                        # Navigate back to home with category filter and immediate scroll
-                        if current_category:
-                            ui.navigate.to(f'/?cat={current_category}&scroll=products&instant=true')
-                        else:
-                            ui.navigate.to('/?scroll=products&instant=true')
+                        # Navigate back to dashboard
+                        ui.navigate.to('/dashboard')
                     
                     ui.button('Back to Products', on_click=go_back, icon='arrow_back').classes('bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300')
                     
@@ -149,63 +141,59 @@ def show_view_event_page():
                         
                         # Rating and Stock Status
                         with ui.row().classes('items-center gap-4 mb-4'):
-                            with ui.row().classes('items-center gap-1'):
-                                for i in range(5):
-                                    ui.icon('star').classes('text-yellow-400 text-sm')
-                                ui.label('4.5 (128 reviews)').classes('text-sm text-gray-600')
-                            ui.label('•').classes('text-gray-400')
-                            ui.label('In Stock').classes('text-sm text-green-600 font-medium')
+                            ui.label('In Stock').classes('text-green-600 font-semibold bg-green-100 px-3 py-1 rounded-full text-sm')
+                            ui.label('Free Shipping').classes('text-blue-600 font-semibold bg-blue-100 px-3 py-1 rounded-full text-sm')
                         
                         # Price Section
-                        with ui.element('div').classes('py-4 border-b border-gray-200'):
-                            with ui.row().classes('items-baseline gap-3'):
-                                ui.label(f"GHS {data['price']:,.2f}").classes('text-3xl lg:text-4xl font-bold text-orange-500')
-                                ui.label(f"GHS {(data['price'] * 1.2):,.2f}").classes('text-lg text-gray-400 line-through')
-                            ui.label('Free shipping on orders over GHS 200').classes('text-sm text-green-600 mt-2')
+                        with ui.element('div').classes('mb-6'):
+                            price_value = data.get('price', 0)
+                            try:
+                                price_float = float(price_value)
+                                ui.label(f'GHS {price_float:,.2f}').classes('text-3xl font-bold text-orange-500')
+                            except (TypeError, ValueError):
+                                ui.label('Price not available').classes('text-2xl font-bold text-gray-500')
                         
-                        # Key Features
-                        with ui.element('div').classes('py-4 border-b border-gray-200'):
-                            ui.label('Key Features').classes('text-lg font-semibold text-gray-800 mb-3')
+                        # Product Features
+                        with ui.element('div').classes('mb-6'):
                             features = [
-                                'High Quality Materials',
-                                'Easy to Use',
-                                'Durable Construction',
-                                '1 Year Warranty'
+                                'High Quality Product',
+                                'Fast Delivery Available',
+                                'Customer Support 24/7',
+                                'Money Back Guarantee'
                             ]
                             for feature in features:
                                 with ui.row().classes('items-center gap-2 mb-2'):
                                     ui.icon('check_circle').classes('text-green-500 text-sm')
                                     ui.label(feature).classes('text-gray-700 text-sm')
                         
-                            # Action Buttons with proper functionality
+                        # Action Buttons with proper functionality
                         with ui.element('div').classes('space-y-4 pt-6'):
                             with ui.row().classes('gap-4'):
-                                    def add_to_cart():
-                                        ui.notify('Added to cart successfully!', type='positive')
-                                        ui.navigate.to('/cart')
-                                    
-                                    def buy_now():
-                                        ui.notify('Redirecting to checkout...', type='info')
-                                        ui.navigate.to('/cart')
-                                    
-                                    ui.button('Add to Cart', on_click=add_to_cart, icon='shopping_cart').classes('flex-1 bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-lg font-semibold text-lg transition-all duration-300')
-                                    ui.button('Buy Now', on_click=buy_now, icon='flash_on').classes('flex-1 bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-lg font-semibold text-lg transition-all duration-300')
+                                def add_to_cart():
+                                    ui.notify('Added to cart successfully!', type='positive')
+                                    ui.navigate.to('/cart')
+                                
+                                def buy_now():
+                                    ui.notify('Redirecting to checkout...', type='info')
+                                    ui.navigate.to('/cart')
+                                
+                                ui.button('Add to Cart', on_click=add_to_cart, icon='shopping_cart').classes('flex-1 bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-lg font-semibold text-lg transition-all duration-300')
+                                ui.button('Buy Now', on_click=buy_now, icon='flash_on').classes('flex-1 bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-lg font-semibold text-lg transition-all duration-300')
                             
                             with ui.row().classes('gap-4'):
-                                    def add_to_wishlist():
-                                        ui.notify('Added to wishlist!', type='positive')
-                                        ui.navigate.to('/wishlist')
-                                    
-                                    def share_product():
-                                        ui.notify('Share link copied to clipboard!', type='info')
-                                    
+                                def add_to_wishlist():
+                                    ui.notify('Added to wishlist!', type='positive')
+                                    ui.navigate.to('/wishlist')
+                                
+                                def share_product():
+                                    ui.notify('Share link copied to clipboard!', type='info')
+                                
+                                ui.button('Add to Wishlist', on_click=add_to_wishlist, icon='favorite_border').classes('bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-all duration-300')
+                                ui.button('Share', on_click=share_product, icon='share').classes('bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-all duration-300')
+                                
+                                # Delete button (for vendors only)
+                                if auth_state and auth_state.is_vendor():
                                     async def delete_product_from_actions():
-                                        # Check if user is a vendor (for security)
-                                        if not (auth_state and auth_state.is_vendor()):
-                                            ui.notify('Only vendors can delete products', type='warning')
-                                            return
-                                        
-                                        # Show confirmation dialog
                                         with ui.dialog() as dialog, ui.card():
                                             ui.label(f'Are you sure you want to delete "{data.get("title", "this product")}"?').classes('text-lg font-semibold mb-4')
                                             ui.label('This action cannot be undone.').classes('text-gray-600 mb-6')
@@ -216,7 +204,6 @@ def show_view_event_page():
                                                 async def confirm_delete():
                                                     dialog.close()
                                                     try:
-                                                        # Use the API client's delete method with authentication
                                                         from utils.api_client import api_client
                                                         success, response = await api_client.delete_ad(str(data.get('id', data.get('title', ''))))
                                                         
@@ -232,12 +219,7 @@ def show_view_event_page():
                                         
                                         dialog.open()
                                     
-                                    ui.button('Add to Wishlist', on_click=add_to_wishlist, icon='favorite_border').classes('bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-all duration-300')
-                                    ui.button('Share', on_click=share_product, icon='share').classes('bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-all duration-300')
-                                    
-                                    # Delete button (temporarily visible to all users for testing)
                                     ui.button('Delete', on_click=delete_product_from_actions, icon='delete').classes('bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300')
-                        
                 
                 # Product Details Tabs with full width
                 with ui.card().classes('bg-white rounded-xl shadow-lg border border-gray-200 mb-6'):
@@ -349,6 +331,10 @@ def show_view_event_page():
                         else:
                             # Fallback if no related products found
                             ui.label('No related products found').classes('col-span-full text-center text-gray-500 py-8')
-        show_footer()
+            
+            # Add bottom spacing to properly separate content from footer
+            with ui.element('div').classes('h-24 w-full'):
+                pass
+        # Footer is handled by main.py
 
     ui.timer(0.05, load, once=True)

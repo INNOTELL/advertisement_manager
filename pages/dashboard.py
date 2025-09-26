@@ -2,6 +2,7 @@ import json
 
 from nicegui import ui
 from utils.api_client import api_client
+
 def show_dashboard_page(auth_state=None):
     if not auth_state or not auth_state.is_authenticated:
         ui.navigate.to('/login')
@@ -35,9 +36,8 @@ def show_dashboard_page(auth_state=None):
         with ui.element('div').classes('container mx-auto px-4 max-w-7xl'):
             # Page Header
             with ui.element('div').classes('mb-8'):
-                dashboard_title = 'Vendor Dashboard' if auth_state.is_vendor() else 'Buyer Dashboard'
-                ui.label(dashboard_title).classes('text-3xl font-bold text-gray-800 mb-2')
-                ui.label(f'Welcome back, {auth_state.email}!').classes('text-gray-600')
+                ui.label('Dashboard').classes('text-3xl font-bold text-gray-800')
+                ui.label('Manage your adverts and track performance').classes('text-gray-600 mt-2')
             
             # Quick Stats
             @ui.refreshable
@@ -107,8 +107,8 @@ def show_dashboard_page(auth_state=None):
                                 category = advert.get('category') or 'Uncategorized'
                                 location = advert.get('location') or advert.get('region') or 'Unknown location'
 
-                                def open_details(e, data=advert):
-                                    ui.navigate.to(f"/view_event?title={data.get('title', '')}&id={resolve_advert_id(data)}")
+                                def open_details():
+                                    ui.navigate.to(f"/view_event?title={advert.get('title', '')}&id={resolve_advert_id(advert)}")
 
                                 with ui.element('div').classes('flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer').on('click', open_details):
                                     image_data = advert.get('image') or advert.get('image_url')
@@ -127,49 +127,16 @@ def show_dashboard_page(auth_state=None):
                                         ui.label(price_text).classes('text-primary font-medium')
                                         ui.label(f"{category} - {location}").classes('text-xs text-gray-500 mt-1')
                                     with ui.element('div').classes('flex flex-col items-end gap-2'):
-                                        ui.button('Edit', on_click=lambda e, data=advert: (e.stop_propagation(), ui.navigate.to(f"/edit_event?title={data.get('title', '')}&id={resolve_advert_id(data)}"))).classes('bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs')
-                                        ui.button('Delete', on_click=lambda e, data=advert: (e.stop_propagation(), delete_advert(resolve_advert_id(data), data.get('title', 'Advert')))).classes('bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs')
+                                        def handle_edit_click():
+                                            ui.navigate.to(f"/edit_event?title={advert.get('title', '')}&id={resolve_advert_id(advert)}")
+                                        
+                                        def handle_delete_click():
+                                            delete_advert(resolve_advert_id(advert), advert.get('title', 'Advert'))
+                                        
+                                        ui.button('Edit', on_click=handle_edit_click).classes('bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs')
+                                        ui.button('Delete', on_click=handle_delete_click).classes('bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs')
 
                         recent_products()
-
-                        async def delete_advert(advert_id: str, title: str):
-                            safe_id = str(advert_id or '').strip()
-                            if not safe_id:
-                                ui.notify('Unable to delete this advert: missing identifier.', type='negative')
-                                return
-                            label_title = title or "this advert"
-                            with ui.dialog() as dialog, ui.card().classes('max-w-md p-6 space-y-4'):
-                                ui.label(f"Delete {label_title}?").classes('text-lg font-semibold')
-                                ui.label('This action cannot be undone.').classes('text-sm text-gray-600')
-                                with ui.row().classes('justify-end gap-3'):
-                                    ui.button('Cancel', on_click=dialog.close).classes('bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded')
-
-                                    async def confirm_delete():
-                                        dialog.close()
-                                        try:
-                                            if not api_client._discovered:
-                                                await api_client.discover_endpoints()
-                                            success, response = await api_client.delete_ad(safe_id)
-                                            if success:
-                                                previous_items = list(adverts_state.get('items') or [])
-                                                filtered_items = [ad for ad in previous_items if resolve_advert_id(ad) != safe_id]
-                                                adverts_state['items'] = filtered_items
-                                                dashboard_stats.refresh()
-                                                recent_products.refresh()
-                                                adverts_table.refresh()
-                                                payload = {'type': 'deleted', 'id': safe_id}
-                                                detail_json = json.dumps(payload)
-                                                ui.run_javascript(
-                                                    f"window.dispatchEvent(new CustomEvent('adverts:changed',{{detail:{detail_json}}}));"
-                                                )
-                                                ui.notify('Advert deleted successfully', type='positive')
-                                            else:
-                                                ui.notify(f"Delete failed: {response}", type='negative')
-                                        except Exception as exc:
-                                            ui.notify(f"Error deleting advert: {exc}", type='negative')
-
-                                    ui.button('Delete', on_click=confirm_delete).classes('bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded')
-                            dialog.open()
 
                     # Recent Orders
                     with ui.card().classes('p-6 bg-gray-50 shadow-sm'):
@@ -180,8 +147,6 @@ def show_dashboard_page(auth_state=None):
                             ui.label('Orders will appear here once the orders API is connected.').classes('text-sm text-gray-500')
 
                 # Right Column - Analytics & Actions
-                
-                # Right Column - Analytics & Actions
                 with ui.element('div').classes('space-y-8'):
                     # Sales Analytics
                     with ui.card().classes('p-6 bg-gray-50 shadow-sm'):
@@ -191,24 +156,13 @@ def show_dashboard_page(auth_state=None):
                             ui.label('Analytics will appear once reporting data is available from the backend.').classes('text-sm text-gray-500')
 
                     # Quick Actions
-                    # Quick Actions
                     with ui.card().classes('p-6 bg-gray-50 shadow-sm'):
                         ui.label('Quick Actions').classes('text-xl font-bold text-gray-800 mb-6')
-                        
-                        actions = [
-                            {'title': 'Add New Product', 'icon': 'add', 'color': 'bg-primary', 'action': lambda: ui.navigate.to('/add_event')},
-                            {'title': 'View Analytics', 'icon': 'analytics', 'color': 'bg-blue-500', 'action': lambda: ui.navigate.to('/analytics')},
-                            {'title': 'Manage Orders', 'icon': 'shopping_bag', 'color': 'bg-green-500', 'action': lambda: ui.navigate.to('/orders')},
-                            {'title': 'Update Profile', 'icon': 'person', 'color': 'bg-purple-500', 'action': lambda: ui.navigate.to('/account')},
-                        ]
-                        
-                        with ui.element('div').classes('grid grid-cols-2 gap-4'):
-                            for action in actions:
-                                with ui.card().classes('p-4 bg-gray-50 shadow-sm hover:shadow-md transition-shadow cursor-pointer').on('click', action['action']):
-                                    with ui.element('div').classes('text-center'):
-                                        ui.icon(action['icon']).classes(f'text-white text-2xl {action["color"]} rounded-full p-3 mx-auto mb-3')
-                                        ui.label(action['title']).classes('font-medium text-gray-800 text-sm')
-                    
+                        with ui.element('div').classes('space-y-4'):
+                            ui.button('Add New Product', on_click=lambda: ui.navigate.to('/add_event')).classes('w-full bg-primary hover:bg-orange-600 text-white py-3 rounded-lg font-semibold')
+                            ui.button('View All Products', on_click=lambda: ui.navigate.to('/dashboard')).classes('w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-semibold')
+                            ui.button('Analytics', on_click=lambda: ui.navigate.to('/analytics')).classes('w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold')
+
                     # Performance Metrics
                     with ui.card().classes('p-6 bg-gray-50 shadow-sm'):
                         ui.label('Performance Metrics').classes('text-xl font-bold text-gray-800 mb-6')
@@ -217,12 +171,10 @@ def show_dashboard_page(auth_state=None):
                             ui.label('Performance insights will show here when analytics endpoints are available.').classes('text-sm text-gray-500')
 
             # My Adverts Section (Enhanced)
-            # My Adverts Section (Enhanced)
             with ui.card().classes('mt-8 p-6 bg-gray-50 shadow-sm'):
                 with ui.element('div').classes('flex items-center justify-between mb-6'):
                     ui.label('My Adverts').classes('text-2xl font-bold text-gray-800')
-                    with ui.row().classes('gap-3'):
-                        search_input = ui.input('Search adverts...').classes('w-64').props('outlined')
+                    with ui.row().classes('gap-4 items-center'):
                         category_filter = ui.select(['All Categories', 'Electronics', 'Fashion', 'Furniture', 'Vehicles', 'Real Estate', 'Services'], value='All Categories').props('outlined')
                         ui.button('Add New', on_click=lambda: ui.navigate.to('/add_event')).classes('bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg')
                 
@@ -296,7 +248,6 @@ def show_dashboard_page(auth_state=None):
 
                             lookup = table_state['lookup']
 
-                            @table.add_slot('body-cell-image')
                             def slot_image(row):
                                 advert = lookup.get(row['id'])
                                 image_data = row.get('image')
@@ -311,18 +262,29 @@ def show_dashboard_page(auth_state=None):
                                     else:
                                         ui.icon('image').classes('text-4xl text-gray-400')
 
-                            @table.add_slot('body-cell-actions')
                             def slot_actions(row):
                                 advert = lookup.get(row['id'])
                                 advert_id = row['id']
                                 title = row.get('title', 'Advert')
                                 with ui.row().classes('gap-2 justify-end'):
-                                    ui.button('View', on_click=lambda: ui.navigate.to(f"/view_event?title={title}&id={advert_id}"))\
+                                    def view_advert():
+                                        ui.navigate.to(f"/view_event?title={title}&id={advert_id}")
+                                    
+                                    def edit_advert():
+                                        ui.navigate.to(f"/edit_event?title={title}&id={advert_id}")
+                                    
+                                    def delete_advert_action():
+                                        delete_advert(advert_id, title)
+                                    
+                                    ui.button('View', on_click=view_advert)\
                                         .classes('bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm')
-                                    ui.button('Edit', on_click=lambda: ui.navigate.to(f"/edit_event?title={title}&id={advert_id}"))\
+                                    ui.button('Edit', on_click=edit_advert)\
                                         .classes('bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm')
-                                    ui.button('Delete', on_click=lambda: delete_advert(advert_id, title))\
+                                    ui.button('Delete', on_click=delete_advert_action)\
                                         .classes('bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm')
+                            
+                            table.add_slot('body-cell-image', slot_image)
+                            table.add_slot('body-cell-actions', slot_actions)
 
                         except Exception as e:
                             ui.notify(f"Error loading adverts: {e}", type='negative')
@@ -340,7 +302,42 @@ def show_dashboard_page(auth_state=None):
 
                 ui.on('adverts_changed', handle_adverts_changed)
 
+            # Global delete function
+            async def delete_advert(advert_id: str, title: str):
+                safe_id = str(advert_id or '').strip()
+                if not safe_id:
+                    ui.notify('Unable to delete this advert: missing identifier.', type='negative')
+                    return
+                label_title = title or "this advert"
+                with ui.dialog() as dialog, ui.card().classes('max-w-md p-6 space-y-4'):
+                    ui.label(f"Delete {label_title}?").classes('text-lg font-semibold')
+                    ui.label('This action cannot be undone.').classes('text-sm text-gray-600')
+                    with ui.row().classes('justify-end gap-3'):
+                        ui.button('Cancel', on_click=dialog.close).classes('bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded')
 
+                        async def confirm_delete():
+                            dialog.close()
+                            try:
+                                if not api_client._discovered:
+                                    await api_client.discover_endpoints()
+                                success, response = await api_client.delete_ad(safe_id)
+                                if success:
+                                    previous_items = list(adverts_state.get('items') or [])
+                                    filtered_items = [ad for ad in previous_items if resolve_advert_id(ad) != safe_id]
+                                    adverts_state['items'] = filtered_items
+                                    dashboard_stats.refresh()
+                                    recent_products.refresh()
+                                    adverts_table.refresh()
+                                    payload = {'type': 'deleted', 'id': safe_id}
+                                    detail_json = json.dumps(payload)
+                                    ui.run_javascript(
+                                        f"window.dispatchEvent(new CustomEvent('adverts:changed',{{detail:{detail_json}}}));"
+                                    )
+                                    ui.notify('Advert deleted successfully', type='positive')
+                                else:
+                                    ui.notify(f"Delete failed: {response}", type='negative')
+                            except Exception as exc:
+                                ui.notify(f"Error deleting advert: {exc}", type='negative')
 
-
-
+                        ui.button('Delete', on_click=confirm_delete).classes('bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded')
+                dialog.open()
