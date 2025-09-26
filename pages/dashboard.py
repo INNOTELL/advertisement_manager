@@ -13,7 +13,7 @@ def show_dashboard_page(auth_state=None):
         with ui.element('div').classes('container mx-auto px-4 max-w-7xl'):
             # Page Header
             with ui.element('div').classes('mb-8'):
-                dashboard_title = 'Vendor Dashboard' if auth_state.role == 'vendor' else 'Buyer Dashboard'
+                dashboard_title = 'Vendor Dashboard' if auth_state.is_vendor() else 'Buyer Dashboard'
                 ui.label(dashboard_title).classes('text-3xl font-bold text-gray-800 mb-2')
                 ui.label(f'Welcome back, {auth_state.email}!').classes('text-gray-600')
             

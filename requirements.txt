@@ -1,5 +1,3 @@
 nicegui
 requests
-fastapi
-pydantic
-python-multipart
+python-dotenv

@@ -1,16 +1,11 @@
-from nicegui import ui, app
+﻿from nicegui import ui, app
 from theme import setup_theme
-from fastapi import HTTPException
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, List
-import uuid
-import requests
 import asyncio
-from utils.api import base_url
 from utils.api_client import api_client
 from utils.auth import auth_state, initialize_auth, signup, signin, logout
 from config import PROTECTED_ROUTES, VENDOR_ROUTES, USER_ROLES
 
+# Expose the assets folder to the nicegui server
 app.add_static_files("/assets", "assets")
 
 # Inject Tailwind CDN once for layout utilities
@@ -21,60 +16,12 @@ ui.add_head_html('''
 body { font-family: 'Inter', sans-serif; }
 </style>
 ''')
+ui.add_head_html('<link rel="stylesheet" href="/assets/reset.css"/>')
 setup_theme()
 
-# ===== Models =====
-class AdvertIn(BaseModel):
-    title: str = Field(..., min_length=1, max_length=120)
-    description: str = Field(..., min_length=1)
-    price: float = Field(..., gt=0)
-    category: str = Field(..., min_length=1, max_length=80)
-    image_url: Optional[str] = None
-
-class AdvertOut(AdvertIn):
-    id: str
-
-# ===== In-memory DB =====
-DB: Dict[str, AdvertOut] = {}
-
-# ===== Authentication State (using utils.auth) =====
-# AuthState is now imported from utils.auth
-
-def ghsc(amount: float) -> str:
-    return f"GHS {amount:,.2f}"
-
-# ===== REST API (FastAPI via NiceGUI) =====
-@app.post('/api/adverts', response_model=AdvertOut)
-def create_advert(ad: AdvertIn):
-    advert_id = str(uuid.uuid4())
-    out = AdvertOut(id=advert_id, **ad.dict())
-    DB[advert_id] = out
-    return out
-
-@app.get('/api/adverts', response_model=List[AdvertOut])
-def list_adverts():
-    return list(DB.values())
-
-@app.get('/api/adverts/{advert_id}', response_model=AdvertOut)
-def get_advert(advert_id: str):
-    if advert_id not in DB:
-        raise HTTPException(status_code=404, detail='Advert not found')
-    return DB[advert_id]
-
-@app.put('/api/adverts/{advert_id}', response_model=AdvertOut)
-def update_advert(advert_id: str, ad: AdvertIn):
-    if advert_id not in DB:
-        raise HTTPException(status_code=404, detail='Advert not found')
-    updated = AdvertOut(id=advert_id, **ad.dict())
-    DB[advert_id] = updated
-    return updated
-
-@app.delete('/api/adverts/{advert_id}')
-def delete_advert(advert_id: str):
-    if advert_id not in DB:
-        raise HTTPException(status_code=404, detail='Advert not found')
-    del DB[advert_id]
-    return {'ok': True}
+# ===== Frontend Application =====
+# This is now a pure frontend application using NiceGUI
+# All backend functionality is handled by the external API
 
 # ===== Authentication Functions =====
 # Authentication functions are now in utils.auth
@@ -86,7 +33,8 @@ async def login_user(email: str, password: str) -> bool:
 async def signup_user(email: str, username: str, password: str) -> bool:
     """Legacy signup function - redirects to new auth system"""
     # Default to buyer role for legacy signup
-    return await signup(username, email, password, USER_ROLES["BUYER"])
+    success, _ = await signup(username, email, password, USER_ROLES["BUYER"])
+    return success
 
 def logout_user():
     """Legacy logout function - redirects to new auth system"""
@@ -112,10 +60,35 @@ from pages.track import show_track_page
 from pages.ai_generator import show_ai_generator_page
 from pages.ai_text_generator import show_ai_text_generator_page
 
+# Import vendor pages (matching your example structure)
+try:
+    from pages.vendor.dashboard import show_vendor_dashboard
+    from pages.vendor.add_event import show_vendor_add_event
+    from pages.vendor.edit_event import show_vendor_edit_event
+    from pages.vendor.events import show_vendor_events
+    from pages.vendor.signup import show_vendor_signup
+    from pages.vendor.signin import show_vendor_signin
+except ImportError:
+    # Fallback if vendor pages don't exist
+    def show_vendor_dashboard():
+        ui.label('Vendor Dashboard - Coming Soon')
+    def show_vendor_add_event():
+        ui.label('Add Event - Coming Soon')
+    def show_vendor_edit_event():
+        ui.label('Edit Event - Coming Soon')
+    def show_vendor_events():
+        ui.label('Vendor Events - Coming Soon')
+    def show_vendor_signup():
+        ui.label('Vendor Signup - Coming Soon')
+    def show_vendor_signin():
+        ui.label('Vendor Signin - Coming Soon')
+
+# Import additional pages (matching your example)
+
 @ui.page('/')
-def index():
+def home_page():
     # Initialize authentication and API discovery on every page load
-    ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
+    # ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
     
     show_header(auth_state, logout_user)
     show_home_page(auth_state)
@@ -124,7 +97,7 @@ def index():
 # Initialize authentication on app start
 @ui.page('/init')
 def init_auth():
-    ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
+    # ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
     ui.navigate.to('/')
 
 @ui.page('/login')
@@ -165,17 +138,22 @@ def add_page():
 @ui.page('/edit_event')
 def edit_page():
     if not auth_state.is_authenticated:
-        ui.navigate.to('/login')
+        ui.navigate.to('/login?next=/edit_event')
+        return
+    # Check if user is vendor
+    if not auth_state.is_vendor():
+        ui.notify("You don't have access to that page.", type="negative")
+        ui.navigate.to('/')
         return
     show_header(auth_state, logout_user)
     show_edit_event_page()
     show_footer()
 
-# @ui.page('/view_event')
-# def view_page():
-#     show_header(auth_state, logout_user)
-#     show_view_event_page()
-#     show_footer()
+@ui.page('/view_event')
+def add_view_page(id=""):
+    show_header(auth_state, logout_user)
+    show_view_event_page()
+    show_footer()
 
 @ui.page('/account')
 def account_page():
@@ -198,7 +176,12 @@ def orders_page():
 @ui.page('/analytics')
 def analytics_page():
     if not auth_state.is_authenticated:
-        ui.navigate.to('/login')
+        ui.navigate.to('/login?next=/analytics')
+        return
+    # Check if user is vendor (Insights are vendor-only)
+    if not auth_state.is_vendor():
+        ui.notify("You don't have access to that page.", type="negative")
+        ui.navigate.to('/')
         return
     show_header(auth_state, logout_user)
     show_analytics_page(auth_state)
@@ -258,6 +241,14 @@ def delivery_page():
 
 @ui.page('/sell')
 def sell_page():
+    if not auth_state.is_authenticated:
+        ui.navigate.to('/login?next=/sell')
+        return
+    # Check if user is vendor
+    if not auth_state.is_vendor():
+        ui.notify("You don't have access to that page.", type="negative")
+        ui.navigate.to('/')
+        return
     show_header(auth_state, logout_user)
     show_sell_page(auth_state)
     show_footer()
@@ -271,7 +262,7 @@ def track_page():
 @ui.page('/ai_generator')
 def ai_generator_page():
     # Initialize authentication and API discovery on every page load
-    ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
+    # ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
     
     show_header(auth_state, logout_user)
     show_ai_generator_page()
@@ -280,11 +271,65 @@ def ai_generator_page():
 @ui.page('/ai_text_generator')
 def ai_text_generator_page():
     # Initialize authentication and API discovery on every page load
-    ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
+    # ui.timer(0.1, lambda: asyncio.create_task(initialize_auth()), once=True)
     
     show_header(auth_state, logout_user)
     show_ai_text_generator_page()
     show_footer()
+
+# Vendor-specific routes (matching your example structure)
+@ui.page("/vendor/dashboard")
+def vendor_dashboard():
+    if not auth_state.is_authenticated:
+        ui.navigate.to('/login?next=/vendor/dashboard')
+        return
+    if not auth_state.is_vendor():
+        ui.notify("You don't have access to that page.", type="negative")
+        ui.navigate.to('/')
+        return
+    show_vendor_dashboard()
+
+@ui.page("/vendor/add_event")
+def vendor_add_event():
+    if not auth_state.is_authenticated:
+        ui.navigate.to('/login?next=/vendor/add_event')
+        return
+    if not auth_state.is_vendor():
+        ui.notify("You don't have access to that page.", type="negative")
+        ui.navigate.to('/')
+        return
+    show_vendor_add_event()
+
+@ui.page("/vendor/edit_event")
+def vendor_edit_event():
+    if not auth_state.is_authenticated:
+        ui.navigate.to('/login?next=/vendor/edit_event')
+        return
+    if not auth_state.is_vendor():
+        ui.notify("You don't have access to that page.", type="negative")
+        ui.navigate.to('/')
+        return
+    show_vendor_edit_event()
+
+@ui.page("/vendor/events")
+def vendor_events():
+    if not auth_state.is_authenticated:
+        ui.navigate.to('/login?next=/vendor/events')
+        return
+    if not auth_state.is_vendor():
+        ui.notify("You don't have access to that page.", type="negative")
+        ui.navigate.to('/')
+        return
+    show_vendor_events()
+
+@ui.page("/vendor/signup")
+def vendor_signup():
+    show_vendor_signup()
+
+@ui.page("/vendor/signin")
+def vendor_signin():
+    show_vendor_signin()
+
 
 if __name__ in {'__main__', '__mp_main__'}:
     ui.run(reload=True)

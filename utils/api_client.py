@@ -4,6 +4,7 @@ import asyncio
 from typing import Dict, Any, Optional, Tuple
 from nicegui import ui
 from config import BACKEND_BASE_URL, OPENAPI_URL_CANDIDATES, API_ROUTES, SESSION_TTL_MIN
+from utils.api import ai_api_key
 
 class APIClient:
     def __init__(self):
@@ -131,20 +132,28 @@ class APIClient:
     def set_token(self, token: str) -> None:
         """Set authentication token"""
         self.token = token
-        # Store in localStorage for persistence
+        # Store in localStorage for persistence - only in UI context
         try:
-            if hasattr(ui.context, 'client') and ui.context.client:
+            # Check if we're in a proper UI context
+            if (hasattr(ui.context, 'client') and 
+                ui.context.client and 
+                hasattr(ui.context.client, 'request')):
                 ui.run_javascript(f'localStorage.setItem("auth_token", "{token}")')
-        except:
+        except Exception as e:
+            print(f"⚠️ Could not access localStorage - not in UI context: {e}")
             pass  # Ignore if not in UI context
     
     def clear_token(self) -> None:
         """Clear authentication token"""
         self.token = None
         try:
-            if hasattr(ui.context, 'client') and ui.context.client:
+            # Check if we're in a proper UI context
+            if (hasattr(ui.context, 'client') and 
+                ui.context.client and 
+                hasattr(ui.context.client, 'request')):
                 ui.run_javascript('localStorage.removeItem("auth_token")')
-        except:
+        except Exception as e:
+            print(f"⚠️ Could not access localStorage - not in UI context: {e}")
             pass  # Ignore if not in UI context
     
     def get_headers(self) -> Dict[str, str]:
@@ -187,7 +196,10 @@ class APIClient:
                 self.clear_token()
                 # Only show UI notifications if we're in a UI context
                 try:
-                    ui.notify("Session expired, please sign in again", type="negative")
+                    if response.status_code == 401:
+                        ui.notify("Session expired, please sign in again", type="negative")
+                    else:
+                        ui.notify("Access denied. Please check your permissions.", type="negative")
                     ui.navigate.to(f"/login?next={ui.context.client.request.path}")
                 except (RuntimeError, AttributeError):
                     # We're in a background task, just log the error
@@ -236,14 +248,14 @@ class APIClient:
             print("❌ No signup endpoint found!")
             return False, "No signup endpoint configured"
         
-        # According to API spec: email and role as query params, username/password as form data
+        # According to backend API spec: email and role as query params, username/password as form data
         params = {
             "email": email,
-            "role": role  # Add role as query param
+            "role": role  # Backend expects "User" or "Vendor"
         }
         data = {
-            "username": name,
-            "password": password
+            "username": name,  # 6-20 characters
+            "password": password  # minimum 8 characters
         }
         print(f"🌐 Making signup request to: {self.base_url}{endpoint}")
         print(f"📤 Request params: {params}")
@@ -352,10 +364,10 @@ class APIClient:
         """Create new ad"""
         endpoint = self.routes["ads"]["create"]
         
-        # Backend expects category and location as query params
+        # Backend expects category and location as query params (from CategoryEnum and LocationEnum)
         params = {
-            "category": ad_data.get("category"),
-            "location": ad_data.get("location")
+            "category": ad_data.get("category"),  # Must be from CategoryEnum
+            "location": ad_data.get("location")   # Must be from LocationEnum
         }
         
         # Backend expects multipart/form-data, not JSON
@@ -370,11 +382,11 @@ class APIClient:
             print(f"📋 Headers: {headers}")
             print(f"📤 Params: {params}")
             
-            # Prepare form data
+            # Prepare form data (matching backend Body_new_advert_advert_post schema)
             form_data = {
-                "title": ad_data.get("title"),
-                "description": ad_data.get("description"),
-                "price": str(ad_data.get("price", 0))
+                "title": ad_data.get("title"),        # Required string
+                "description": ad_data.get("description"),  # Required string
+                "price": str(ad_data.get("price", 0))  # Required number
             }
             
             # Add optional fields
@@ -489,64 +501,89 @@ class APIClient:
         return await self.request("DELETE", endpoint)
     
     async def generate_ai_image(self, prompt_data: Dict) -> Tuple[bool, Any]:
-        """Generate AI image using OpenAI DALL-E directly"""
-        print(f"Making AI image generation request")
-        print(f"Request data: {prompt_data}")
-        
-        try:
-            # Import the quick AI service
-            from quick_ai_fix import quick_ai
-            
-            # Extract parameters
-            prompt = prompt_data.get('prompt', '')
-            style = prompt_data.get('style', 'photorealistic')
-            size = prompt_data.get('size', '1024x1024')
-            quality = prompt_data.get('quality', 'standard')
-            
-            # Call the AI service directly
-            success, result = quick_ai.generate_image(prompt, style, size, quality)
-            
-            if success:
-                print(f"✅ AI Image generation successful")
-                return True, result
-            else:
-                print(f"❌ AI Image generation failed: {result}")
-                return False, result
-                
-        except Exception as e:
-            error_msg = f"AI Image generation error: {str(e)}"
-            print(f"❌ {error_msg}")
-            return False, error_msg
+        """Generate AI image using backend API"""
+        endpoint = self.routes.get("ai", {}).get("generate_image", "/ai/generate-image")
+        return await self.request("POST", endpoint, prompt_data)
     
     async def generate_ai_text(self, text_data: Dict) -> Tuple[bool, Any]:
-        """Generate AI text using OpenAI GPT-4o-mini directly"""
-        print(f"Making AI text generation request")
-        print(f"Request data: {text_data}")
+        """Generate AI text using backend API"""
+        endpoint = self.routes.get("ai", {}).get("text_generation", "/ai/generate-text")
+        return await self.request("POST", endpoint, text_data)
+    
+    # Cart Management
+    async def add_to_cart(self, advert_id: str, quantity: int = 1) -> Tuple[bool, Any]:
+        """Add item to cart"""
+        endpoint = self.routes["cart"]["add"]
+        params = {
+            "advert_id": advert_id,
+            "quantity": quantity
+        }
+        return await self.request("POST", endpoint, params=params)
+    
+    # Wishlist Management  
+    async def add_to_wishlist(self, advert_id: str) -> Tuple[bool, Any]:
+        """Add item to wishlist"""
+        endpoint = self.routes["wishlist"]["add"]
+        params = {
+            "advert_id": advert_id
+        }
+        return await self.request("POST", endpoint, params=params)
+    
+    # Search and Filter
+    async def search_ads(self, keyword: str, category: str = None, location: str = None, 
+                        min_price: float = None, max_price: float = None) -> Tuple[bool, Any]:
+        """Search adverts with filters"""
+        endpoint = self.routes["ads"]["search"]
+        params = {
+            "keyword": keyword
+        }
+        if category:
+            params["category"] = category
+        if location:
+            params["location"] = location
+        if min_price is not None:
+            params["min_price"] = min_price
+        if max_price is not None:
+            params["max_price"] = max_price
+        return await self.request("GET", endpoint, params=params)
+    
+    # Get nearby adverts
+    async def get_nearby_ads(self, user_location: str) -> Tuple[bool, Any]:
+        """Get adverts near a specific location"""
+        endpoint = self.routes["ads"]["nearby"].format(user_location=user_location)
+        return await self.request("GET", endpoint)
+    
+    # Get recommendations
+    async def get_recommendations(self, category: str) -> Tuple[bool, Any]:
+        """Get advert recommendations by category"""
+        endpoint = self.routes["ads"]["recommendations"]
+        params = {
+            "category": category
+        }
+        return await self.request("GET", endpoint, params=params)
+    
+    # Report advert
+    async def report_advert(self, advert_id: str, reason: str) -> Tuple[bool, Any]:
+        """Report an inappropriate advert"""
+        endpoint = self.routes["report"]["advert"].format(id=advert_id)
+        data = {
+            "reason": reason
+        }
+        return await self.request("POST", endpoint, data)
+    
+    def check_ai_readiness(self) -> str:
+        """Check AI API readiness and return status string"""
+        if not ai_api_key or ai_api_key == "your_ai_api_key_here":
+            return "AI API key not configured. Please set AI_API_KEY in your .env file."
         
-        try:
-            # Import the quick AI service
-            from quick_ai_fix import quick_ai
-            
-            # Extract parameters
-            prompt = text_data.get('prompt', '')
-            content_type = text_data.get('content_type', 'general')
-            tone = text_data.get('tone', 'professional')
-            length = text_data.get('length', 'medium')
-            
-            # Call the AI service directly
-            success, result = quick_ai.generate_text(prompt, content_type, tone, length)
-            
-            if success:
-                print(f"✅ AI Text generation successful")
-                return True, result
-            else:
-                print(f"❌ AI Text generation failed: {result}")
-                return False, result
-                
-        except Exception as e:
-            error_msg = f"AI Text generation error: {str(e)}"
-            print(f"❌ {error_msg}")
-            return False, error_msg
+        if not self._discovered:
+            return "API endpoints not discovered yet. Please wait for initialization."
+        
+        ai_endpoints = self.routes.get("ai", {})
+        if not ai_endpoints:
+            return "AI endpoints not available in API specification."
+        
+        return "AI integration ready. API key configured and endpoints available."
 
 # Global API client instance
 api_client = APIClient()

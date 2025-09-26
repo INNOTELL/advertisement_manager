@@ -12,25 +12,65 @@ OPENAPI_URL_CANDIDATES = [
 # Session Configuration
 SESSION_TTL_MIN = 120
 
-# API Endpoints (will be discovered dynamically)
+# API Endpoints (matching backend documentation exactly)
 API_ROUTES = {
     "auth": {
-        "signin": "",
-        "signup": "",
-        "me": ""
+        "signin": "/Login",
+        "signup": "/SignUp", 
+        "me": "/advertisers/{id}"  # Backend uses /advertisers/{id} for profile
     },
     "ads": {
-        "list": "",
-        "create": "",
-        "detail": "",
-        "update": ""
+        "list": "/adverts",
+        "create": "/advert",
+        "detail": "/advert_details/{id}",
+        "update": "/edit_advert/{id}",
+        "delete": "/adverts/{id}",
+        "nearby": "/adverts_nearby/{user_location}",
+        "search": "/ads/search",
+        "recommendations": "/recommendations/"
+    },
+    "cart": {
+        "add": "/cart/add"
+    },
+    "wishlist": {
+        "add": "/wishlist/add"
+    },
+    "report": {
+        "advert": "/adverts/{id}/report"
     }
 }
 
-# User Roles
+# Backend CategoryEnum (exact match)
+CATEGORIES = [
+    "Babies & kids",
+    "Electronics", 
+    "Fashion",
+    "Cars",
+    "Real Estate",
+    "Jobs",
+    "Home, Furniture & Appliances",
+    "Beauty & Personal Care",
+    "Food & Agriculture"
+]
+
+# Backend LocationEnum (exact match)
+LOCATIONS = [
+    "Greater Accra",
+    "Central Region",
+    "Ashanti Region", 
+    "Brong Ahafo Region",
+    "Eastern Region",
+    "Northern Region",
+    "Upper East Region",
+    "Upper West Region",
+    "Volta Region",
+    "Western Region"
+]
+
+# User Roles (matching backend RoleEnum)
 USER_ROLES = {
-    "BUYER": "buyer",
-    "VENDOR": "vendor"
+    "BUYER": "User",      # Backend uses "User" not "buyer"
+    "VENDOR": "Vendor"    # Backend uses "Vendor" not "vendor"
 }
 
 # Protected Routes

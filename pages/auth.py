@@ -1,5 +1,5 @@
-from nicegui import ui
-from utils.auth import signup, signin
+﻿from nicegui import ui
+from utils.auth import signup, signin, normalize_role
 from config import USER_ROLES
 from utils.api_client import api_client
 
@@ -29,7 +29,7 @@ def show_login_page(login_user=None, auth_state=None):
                         
                         ui.label('Welcome Back!').classes('text-2xl font-bold mb-4 text-white drop-shadow-md')
                         ui.label('Sign in to your account and continue your journey with InnoHub Ghana.').classes('text-white/90 text-base leading-relaxed mb-6 font-medium')
-                        ui.label('🛒 Buy and Sell with confidence').classes('text-yellow-200 text-base font-semibold drop-shadow-md')
+                        ui.label('ðŸ›’ Buy and Sell with confidence').classes('text-yellow-200 text-base font-semibold drop-shadow-md')
                 
                 # Right Column - Login Form
                 with ui.element('div').classes('p-8 flex flex-col justify-center'):
@@ -75,7 +75,7 @@ def show_login_page(login_user=None, auth_state=None):
                         # Proper login flow with API call, auth persistence, and feedback
                         async def handle_login_async():
                             try:
-                                print(f"🔑 Starting login for: {email}")
+                                print(f"ðŸ”‘ Starting login for: {email}")
                                 
                                 # Call the API directly for better control
                                 
@@ -85,7 +85,7 @@ def show_login_page(login_user=None, auth_state=None):
                                 
                                 # Make the API call
                                 success, response = await api_client.signin(email, password)
-                                print(f"📡 API Response - Success: {success}, Response: {response}")
+                                print(f"ðŸ“¡ API Response - Success: {success}, Response: {response}")
                                 
                                 if success and response:
                                     # Parse the token/session payload
@@ -100,8 +100,9 @@ def show_login_page(login_user=None, auth_state=None):
                                                 username = message.split("Welcome back, ")[1].split("!")[0] if "Welcome back," in message else email.split("@")[0]
                                             
                                             # Extract role from response or JWT token
-                                            role = response.get("role", "buyer")
-                                            if not role or role == "buyer":
+                                            raw_role = response.get("role")
+                                            role = normalize_role(raw_role)
+                                            if not raw_role:
                                                 try:
                                                     import base64
                                                     import json
@@ -111,23 +112,19 @@ def show_login_page(login_user=None, auth_state=None):
                                                         payload += '=' * (4 - len(payload) % 4)
                                                         decoded = base64.b64decode(payload)
                                                         token_data = json.loads(decoded)
-                                                        token_role = token_data.get('role', 'User')
-                                                        if token_role.lower() == 'user':
-                                                            role = 'buyer'
-                                                        elif token_role.lower() == 'vendor':
-                                                            role = 'vendor'
-                                                        else:
-                                                            role = token_role.lower()
+                                                        token_role = token_data.get('role')
+                                                        if token_role:
+                                                            role = normalize_role(token_role)
                                                 except Exception as e:
-                                                    print(f"⚠️ Could not decode JWT token: {e}")
-                                                    role = "buyer"
+                                                    print(f"âš ï¸ Could not decode JWT token: {e}")
+                                                    role = normalize_role(USER_ROLES['BUYER'])
                                             
                                             # Persist auth in per-user store
                                             user_data = {
                                                 "id": None,
                                                 "name": username,
                                                 "email": email,
-                                                "role": role.lower()
+                                                "role": role
                                             }
                                             
                                             # Set auth state and token
@@ -140,15 +137,15 @@ def show_login_page(login_user=None, auth_state=None):
                                                 ui.run_javascript(f'localStorage.setItem("user_data", {json.dumps(user_data)})')
                                                 ui.run_javascript('localStorage.setItem("is_authenticated", "true")')
                                             except (RuntimeError, AttributeError):
-                                                print("⚠️ Could not store auth in localStorage - not in UI context")
+                                                print("âš ï¸ Could not store auth in localStorage - not in UI context")
                                             
-                                            print(f"✅ Auth persisted: {auth_state.is_authenticated}, user: {auth_state.name}")
+                                            print(f"âœ… Auth persisted: {auth_state.is_authenticated}, user: {auth_state.name}")
                                             
                                             # Show success feedback
                                             try:
                                                 ui.notify('Logged in successfully!', type='positive')
                                             except (RuntimeError, AttributeError):
-                                                print("✅ Logged in successfully!")
+                                                print("âœ… Logged in successfully!")
                                             
                                             # Clear form fields
                                             try:
@@ -158,26 +155,26 @@ def show_login_page(login_user=None, auth_state=None):
                                                 # Automatic redirect to Home
                                                 ui.navigate.to('/')
                                             except (RuntimeError, AttributeError):
-                                                print("⚠️ Could not clear form or navigate - not in UI context")
+                                                print("âš ï¸ Could not clear form or navigate - not in UI context")
                                             
                                             # Force UI refresh to show logged-in state
                                             try:
                                                 ui.timer(0.5, lambda: ui.navigate.reload(), once=True)
                                             except (RuntimeError, AttributeError):
-                                                print("⚠️ Could not set timer - not in UI context")
+                                                print("âš ï¸ Could not set timer - not in UI context")
                                             
                                             return True
                                         else:
                                             try:
                                                 ui.notify('Login failed: No token received', type='negative')
                                             except (RuntimeError, AttributeError):
-                                                print("❌ Login failed: No token received")
+                                                print("âŒ Login failed: No token received")
                                             return False
                                     else:
                                         try:
                                             ui.notify('Login failed: Invalid response format', type='negative')
                                         except (RuntimeError, AttributeError):
-                                            print("❌ Login failed: Invalid response format")
+                                            print("âŒ Login failed: Invalid response format")
                                         return False
                                 else:
                                     # Show failure feedback with details
@@ -186,20 +183,20 @@ def show_login_page(login_user=None, auth_state=None):
                                         try:
                                             ui.notify('Login failed: User does not exist. Please check your email or create an account.', type='negative')
                                         except (RuntimeError, AttributeError):
-                                            print("❌ Login failed: User does not exist. Please check your email or create an account.")
+                                            print("âŒ Login failed: User does not exist. Please check your email or create an account.")
                                     else:
                                         try:
                                             ui.notify(f'Login failed: {error_msg[:100]}', type='negative')
                                         except (RuntimeError, AttributeError):
-                                            print(f"❌ Login failed: {error_msg[:100]}")
+                                            print(f"âŒ Login failed: {error_msg[:100]}")
                                     return False
                                 
                             except Exception as e:
-                                print(f"❌ Login error: {e}")
+                                print(f"âŒ Login error: {e}")
                                 try:
                                     ui.notify(f'Login failed: {str(e)[:100]}', type='negative')
                                 except (RuntimeError, AttributeError):
-                                    print(f"❌ Login failed: {str(e)[:100]}")
+                                    print(f"âŒ Login failed: {str(e)[:100]}")
                                 return False
                             finally:
                                 # Re-enable login button
@@ -207,7 +204,7 @@ def show_login_page(login_user=None, auth_state=None):
                                     login_button.delete()
                                     ui.button('Sign In', on_click=handle_login, icon='login').classes('w-full h-12 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 text-sm sm:text-base')
                                 except (RuntimeError, AttributeError):
-                                    print("⚠️ Could not re-enable login button - not in UI context")
+                                    print("âš ï¸ Could not re-enable login button - not in UI context")
                         
                         # Run the async task
                         import asyncio
@@ -283,61 +280,66 @@ def show_signup_page(signup_user=None):
                                 ui.label('Buyer - Browse and purchase products').classes('text-xs text-gray-500 ml-6')
                                 ui.label('Vendor - Sell products and manage inventory').classes('text-xs text-gray-500 ml-6')
                     
-                    def handle_signup():
+                    async def handle_signup():
                         username = username_input.value.strip()
                         email = email_input.value.strip()
                         password = password_input.value
                         confirm_password = confirm_password_input.value
-                        role = role_radio_buyer.value.lower()
-                        
+                        role = normalize_role(role_radio_buyer.value)
+
                         if not all([username, email, password, confirm_password]):
                             ui.notify('Please fill in all fields', type='negative')
                             return
-                        
+
                         # Email validation
                         import re
                         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
                         if not re.match(email_pattern, email):
                             ui.notify('Please enter a valid email address', type='negative')
                             return
-                        
+
                         # Password validation
                         if len(password) < 8:
                             ui.notify('Password must be at least 8 characters', type='negative')
                             return
-                        
+
                         if password != confirm_password:
                             ui.notify('Passwords do not match', type='negative')
                             return
-                        
+
                         # Username validation
                         if len(username) < 6:
                             ui.notify('Username must be at least 6 characters', type='negative')
                             return
-                    
+
                         ui.notify('Creating your account...', type='info')
-                                
-                        async def handle_signup_async():
-                            success = await signup(username, email, password, role)
-                            if success:
-                                # Get next parameter from URL
+
+                        success, details = await signup(username, email, password, role)
+                        details = details or {}
+                        if success:
+                            auto_login = details.get('auto_login', False)
+                            if auto_login:
+                                ui.notify('Account created and logged in successfully!', type='positive')
                                 next_path = ui.context.client.request.query_params.get('next', '/dashboard')
-                                ui.navigate.to(next_path)
                             else:
-                                ui.notify('Signup failed. Email might already exist. Please try again.', type='negative')
-                                
-                        import asyncio
-                        asyncio.create_task(handle_signup_async())
-                                
+                                ui.notify('Account created successfully! Please sign in.', type='positive')
+                                next_path = '/login'
+                            ui.navigate.to(next_path)
+                        else:
+                            error_msg = details.get('error') if isinstance(details, dict) else str(details)
+                            if not error_msg:
+                                error_msg = 'Email might already exist. Please try again.'
+                            ui.notify(f"Signup failed: {error_msg}", type='negative')
+
                     ui.button('Create Account', on_click=handle_signup, icon='person_add').classes('w-full h-12 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 text-sm sm:text-base')
-                    
                     
                     with ui.element('div').classes('text-center mt-4'):
                         ui.label('Already have an account? ').classes('text-gray-600 text-sm')
                         ui.link('Sign in here', '/login').classes('text-blue-600 hover:text-blue-700 font-semibold text-sm no-underline')
                     
                     with ui.element('div').classes('text-center mt-4 text-xs text-gray-500'):
-                        ui.label('By creating an account, you agree to InnoHub\'s ').classes('text-xs text-gray-500')
+                        ui.label("By creating an account, you agree to InnoHub's ").classes('text-xs text-gray-500')
                         ui.link('Terms and Conditions', '#').classes('text-xs text-blue-600 hover:text-blue-700 no-underline')
                         ui.label(' and ').classes('text-xs text-gray-500')
                         ui.link('Privacy Policy', '#').classes('text-xs text-blue-600 hover:text-blue-700 no-underline')
+                        
